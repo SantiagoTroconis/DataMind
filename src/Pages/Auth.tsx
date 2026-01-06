@@ -15,9 +15,9 @@ export const Auth = () => {
     useEffect(() => {
         const token = localStorage.getItem('user');
         if (token) {
-            navigate('/home');
+            navigate('/dashboard');
         }
-    }, []);
+    }, [navigate]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,7 +45,7 @@ export const Auth = () => {
             if (data.token) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/home');
+                navigate('/dashboard');
             }
 
         } catch (e) {

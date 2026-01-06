@@ -1,8 +1,9 @@
 import React from 'react';
+import { type Data } from 'plotly.js';
 import Plot from 'react-plotly.js';
 
 interface ChartViewerProps {
-    chartData: any;
+    chartData: { data: Data[]; layout: Record<string, unknown> };
     onClose: () => void;
     className?: string;
 }

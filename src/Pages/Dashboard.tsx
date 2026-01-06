@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, Redo, LogOut, Trash, Search } from 'lucide-react';
+import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search } from 'lucide-react';
+import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
 import DataGrid from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -15,23 +16,28 @@ export interface Message {
   executed_code?: string;
 }
 
+export interface User {
+  id: string;
+  email: string;
+}
+
 export interface Conversation {
   id: string;
   filename: string;
   messages: Message[];
 }
 
-function App() {
+function Dashboard() {
   const [appState, setAppState] = useState('landing');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [fileName, setFileName] = useState('');
-  const [gridData, setGridData] = useState<{ columns: string[], rows: any[] } | null>(null);
+  const [gridData, setGridData] = useState<{ columns: string[], rows: Record<string, unknown>[] } | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<any>(null);
+  const [chartData, setChartData] = useState<{ data: Data[]; layout: Record<string, unknown> } | null>(null);
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -43,6 +49,7 @@ function App() {
   ]);
   const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getItem('current_session_id'));
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter rows based on search term
@@ -54,8 +61,8 @@ function App() {
     )
     : gridData ? gridData.rows : [];
 
-  const generateCsvFile = (columns: string[], rows: any[], filename: string): File => {
-    const processValue = (val: any) => {
+  const generateCsvFile = (columns: string[], rows: Record<string, unknown>[], filename: string): File => {
+    const processValue = (val: unknown) => {
       if (val === null || val === undefined) return '';
       return `"${String(val).replace(/"/g, '""')}"`;
     };
@@ -112,7 +119,7 @@ function App() {
     setUser(user);
     setToken(token);
     fetchConversations(token);
-  }, []);
+  }, [navigate]);
 
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +129,7 @@ function App() {
 
     setFileName(file.name);
     setCurrentFile(file);
+    setIsUploading(true);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -164,10 +172,12 @@ function App() {
       }
     } catch (error) {
       console.error('Error al subir el archivo:', error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleFileSelect = async (conversation: any) => {
+  const handleFileSelect = async (conversation: Conversation) => {
     try {
       setSessionId(conversation.id);
       sessionStorage.setItem('current_session_id', conversation.id);
@@ -374,7 +384,7 @@ function App() {
         </div>
 
         <div className="px-6 py-2">
-          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl cursor-pointer transition-all shadow-lg shadow-zinc-900/20 group">
+          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl cursor-pointer transition-all  group">
             <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-white/20 transition-colors">
               <Upload className="w-4 h-4" />
             </div>
@@ -473,16 +483,21 @@ function App() {
                       <div className="w-20 h-20 bg-zinc-50 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300 shadow-sm">
                         <Upload className="w-8 h-8 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
                       </div>
+
                       <h3 className="text-3xl font-bold text-zinc-900 mb-4 tracking-tight">
-                        Upload Data
+                        {isUploading ? 'Uploading...' : 'Upload Data'}
                       </h3>
                       <p className="text-zinc-500 mb-8 text-lg max-w-md mx-auto leading-relaxed">
-                        Drag and drop your spreadsheet here to start analyzing with AI.
+                        {isUploading ? 'Please wait while we process your file.' : 'Drag and drop your spreadsheet here to start analyzing with AI.'}
                       </p>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 text-xs font-medium text-zinc-500">
-                        <FileSpreadsheet className="w-3 h-3" />
-                        <span>.xlsx, .csv supported</span>
-                      </div>
+                      {isUploading ? (
+                        <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 text-xs font-medium text-zinc-500">
+                          <FileSpreadsheet className="w-3 h-3" />
+                          <span>.xlsx, .csv supported</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <input
@@ -491,6 +506,7 @@ function App() {
                     className="hidden"
                     accept=".xlsx,.xls,.csv"
                     onChange={handleFileUpload}
+                    disabled={isUploading}
                   />
                 </label>
               </div>
@@ -609,4 +625,4 @@ function App() {
   );
 }
 
-export default App
+export default Dashboard

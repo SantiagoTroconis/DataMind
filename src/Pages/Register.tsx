@@ -39,7 +39,7 @@ export const Register = ({ onSwitchToLogin }: RegisterProps) => {
             toast("Registration successful");
 
             setTimeout(() => {
-                navigate('/');
+                navigate('/auth');
             }, 1000);
         } catch (error) {
             toast("Error during registration:" + error);

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { type Data } from 'plotly.js';
 import { Sparkles, X, Send, Bot, User, Code, BarChart, Type } from 'lucide-react';
-import type { Message } from '../Pages/App';
+import type { Message } from '../Pages/Dashboard';
 
 interface ChatBoxProps {
     isOpen?: boolean;
@@ -9,9 +10,9 @@ interface ChatBoxProps {
     appState?: string;
     setAppState?: (state: string) => void;
     file?: File | null;
-    onUpdateGrid?: (data: { columns: string[], rows: any[] }) => void;
+    onUpdateGrid?: (data: { columns: string[], rows: Record<string, unknown>[] }) => void;
     onUpdateFile?: (file: File) => void;
-    onChartGenerated?: (chartData: any) => void;
+    onChartGenerated?: (chartData: { data: Data[]; layout: Record<string, unknown> }) => void;
     messages: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
     sessionId?: string | null;
@@ -38,8 +39,8 @@ const QUICK_ACTIONS = [
     }
 ];
 
-const generateCsvFile = (columns: string[], rows: any[]): File => {
-    const processValue = (val: any) => {
+const generateCsvFile = (columns: string[], rows: Record<string, unknown>[]): File => {
+    const processValue = (val: unknown) => {
         if (val === null || val === undefined) return '';
         return `"${String(val).replace(/"/g, '""')}"`;
     };
