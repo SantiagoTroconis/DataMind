@@ -44,7 +44,7 @@ class CodeExecutionService:
             fig = local_scope.get('fig')
             
             if not fig:
-                 raise ValueError("The executed code did not result in a variable named 'fig'.")
+                raise ValueError("The executed code did not result in a variable named 'fig'.")
 
             # Basic check if it looks like a plotly figure (has to_json method)
             if not hasattr(fig, 'to_json'):

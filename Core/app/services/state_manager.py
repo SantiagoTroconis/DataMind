@@ -72,7 +72,7 @@ class StateManager:
             session.close()
 
     @staticmethod
-    def add_command(conversation_id: int, prompt: str, code: str, explanation: str = None):
+    def add_command(conversation_id: int, prompt: str, code: str, explanation: str = None, chart_code: str = None):
         session = SessionLocal()
         try:
             # Clean up "future" (inactive) commands to maintain linear history
@@ -85,6 +85,7 @@ class StateManager:
                 conversation_id=conversation_id,
                 prompt=prompt,
                 generated_code=code,
+                chart_generated_code=chart_code,
                 explanation=explanation,
                 is_active=True
             )
@@ -95,6 +96,50 @@ class StateManager:
             raise
         finally:
             session.close()
+
+    @staticmethod
+    def get_active_chart_code(conversation_id: int):
+        """
+        Returns the code of the most recent active chart generation.
+        """
+        session = SessionLocal()
+        try:
+            cmd = session.query(Command).filter_by(
+                conversation_id=conversation_id, 
+                is_active=True
+            ).filter(
+                Command.chart_generated_code.isnot(None)
+            ).order_by(Command.id.desc()).first()
+            
+            return cmd.chart_generated_code if cmd else None
+        finally:
+            session.close()
+
+    @staticmethod
+    def add_chart_command(conversation_id: int, prompt: str, code: str, explanation: str = None):
+        session = SessionLocal()
+        try:
+            # Clean up "future" (inactive) commands to maintain linear history
+            # If we are adding a new command, any command that was "undone" (is_active=False) 
+            # and is chronologically "after" the current state should be removed.
+            # Simplified approach: Delete ALL inactive commands for this conversation.
+            ##session.query(Command).filter_by(conversation_id=conversation_id, is_active=False).delete()##
+            
+            cmd = Command(
+                conversation_id=conversation_id,
+                prompt=prompt,
+                chart_generated_code=code,
+                explanation=explanation,
+                is_active=True
+            )
+            session.add(cmd)
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
 
     @staticmethod
     def undo_last_command(conversation_id: int):

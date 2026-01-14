@@ -49,43 +49,55 @@ def transform_excel():
         return jsonify({"error": "Faltan datos (session_id o prompt)"}), 400
 
     try:
-        # 1. Get Session (Authenticated)
         session = StateManager.get_session(session_id, current_user_id)
-        
-        # 2. Replay
+
+        # Obtenemos el DataFrame actual despues de aplicar todos los prompts
         current_df = _replay_session(session)
         
-        # 3. Generate Code
+        # Obtenemos la lista de columnas
         columns = current_df.columns.tolist()
+        
+        # Obtenemos un sample de datos para el prompt
         sample_data = None
         if not current_df.empty:
             sample_data = current_df.iloc[0].where(pd.notnull(current_df.iloc[0]), None).to_dict()
 
+        # Generamos el código
         code_data = LLMService.generate_transformation_code(prompt, columns, sample_data)
         
-        # Handle new dictionary format or legacy tuple format
+        # Manejamos el nuevo formato de diccionario o el formato heredado de tupla
         if isinstance(code_data, dict):
             code = code_data['code']
             explanation = code_data['explanation']
-            intent = code_data.get('intent', 'UPDATE')
+            intent = code_data.get('intent', 'DATA_MUTATION')
         else:
             code, explanation = code_data
-            intent = 'UPDATE'
+            intent = 'DATA_MUTATION'
 
-        if intent == 'CHART':
+        if intent == 'VISUAL_UPDATE':
             chart_json = CodeExecutionService.execute_chart_generation(current_df, code)
+            
+            # Store in DB
+            StateManager.add_command(
+                session_id, 
+                prompt, # User prompt
+                "pass", # No DF transformation code needed for pure chart
+                explanation,
+                chart_code=code # Store the CHART code
+            )
             
             return jsonify({
                 "status": "success",
                 "message": "Gráfico generado exitosamente",
                 "type": "chart",
                 "chart_data": json.loads(chart_json),
+                "has_chart": True,
                 "explanation": explanation,
                 "executed_code": code
             }), 200
             
         else:
-            # 4. Store Command
+            # 4. Store Command (Transformation)
             StateManager.add_command(session_id, prompt, code, explanation)
             
             # 5. Execute New
@@ -93,13 +105,30 @@ def transform_excel():
             
             data = ExcelService.format_dataframe_response(modified_df)
             
+            # Reactivity: Check DB for active chart
+            updated_chart_data = None
+            has_chart = False
+            chart_code = StateManager.get_active_chart_code(session_id)
+            
+            if chart_code:
+                try:
+                    chart_json = CodeExecutionService.execute_chart_generation(modified_df, chart_code)
+                    updated_chart_data = json.loads(chart_json)
+                    has_chart = True
+                except Exception as e:
+                    # Log error but don't fail request
+                    print(f"Reactive chart update failed: {e}")
+                    updated_chart_data = None
+
             return jsonify({
                 "status": "success",
                 "message": "Transformación exitosa",
                 "type": "update",
                 "executed_code": code,
                 "explanation": explanation,
-                "data": data
+                "data": data,
+                "chart_data": updated_chart_data,
+                "has_chart": has_chart
             }), 200
 
     except ValueError as e:
@@ -190,8 +219,19 @@ def get_conversation_state(session_id):
         current_df = _replay_session(session_data)
         grid_data = ExcelService.format_dataframe_response(current_df) # Limit to 10/15 rows for preview
         
+        # 3. Get Active Chart (Persistence)
+        chart_data = None
+        has_chart = False
+        chart_code = StateManager.get_active_chart_code(session_id)
+        if chart_code:
+            try:
+                chart_json = CodeExecutionService.execute_chart_generation(current_df, chart_code)
+                chart_data = json.loads(chart_json)
+                has_chart = True
+            except:
+                pass
+        
         # 3. Format Messages
-        # We need to interleave User prompts and Assistant responses
         formatted_messages = []
         for cmd in session_data['commands']:
             # User Message
@@ -208,14 +248,16 @@ def get_conversation_state(session_id):
                 "role": "assistant",
                 "content": cmd.explanation or "Transformation applied.",
                 "executed_code": cmd.generated_code,
-                "timestamp": cmd.created_at.isoformat() # Ideally slightly later, but same is fine
+                "timestamp": cmd.created_at.isoformat() 
             })
 
         return jsonify({
             "status": "success",
             "data": {
                 "filename": session_data['conversation'].filename,
-                "grid": grid_data, # Contains columns and rows
+                "grid": grid_data,
+                "chart_data": chart_data,
+                "has_chart": has_chart,
                 "messages": formatted_messages
             }
         }), 200
@@ -243,6 +285,8 @@ def delete_conversation(session_id):
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 def _replay_session(session):

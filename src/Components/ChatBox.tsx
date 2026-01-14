@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { type Data } from 'plotly.js';
 import { Sparkles, X, Send, Bot, User, Code, BarChart, Type } from 'lucide-react';
 import type { Message } from '../Pages/Dashboard';
+import { toast } from 'sonner';
 
 interface ChatBoxProps {
     isOpen?: boolean;
@@ -126,10 +127,17 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
 
 
             if (data.status === 'success') {
+                
                 if (data.type === 'chart' && onChartGenerated) {
                     onChartGenerated(data.chart_data);
-                } else if (data.data && onUpdateGrid) {
+                } else if (data.type === 'update' && onUpdateGrid) {
                     onUpdateGrid(data.data);
+
+                    if(data.has_chart && onChartGenerated) {
+                        onChartGenerated(data.chart_data);
+                    } else {
+                        toast.info('Data updated, chart not updated.');
+                    }
 
                     if (onUpdateFile) {
                         const newFile = generateCsvFile(data.data.columns, data.data.rows);

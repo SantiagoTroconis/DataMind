@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search } from 'lucide-react';
+import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search, RefreshCcw } from 'lucide-react';
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
 import DataGrid from 'react-data-grid';
@@ -51,6 +51,20 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const findColumnByValues = (arr: unknown[] | undefined, grid: { columns: string[]; rows: Record<string, unknown>[] } | null) => {
+    if (!arr || !grid) return null;
+    for (const col of grid.columns) {
+      const colValues = grid.rows.map(r => r[col]);
+      if (colValues.length !== arr.length) continue;
+      let match = true;
+      for (let i = 0; i < colValues.length; i++) {
+        if (String(colValues[i]) !== String((arr as any)[i])) { match = false; break; }
+      }
+      if (match) return col;
+    }
+    return null;
+  };
 
   // Filter rows based on search term
   const filteredRows = gridData && searchTerm
@@ -207,6 +221,26 @@ function Dashboard() {
           setCurrentFile(reconstructedFile);
         }
 
+        if (data.data.chart_data) {
+          // Attach column metadata to traces when possible so ChartViewer can refresh client-side
+          const incomingChart = data.data.chart_data as any;
+          if (incomingChart?.data && data.data.grid) {
+            incomingChart.data = incomingChart.data.map((trace: any) => {
+              const existingX = trace?.customdata?.xColumn ?? null;
+              const existingY = trace?.customdata?.yColumn ?? null;
+              const inferredX = existingX ? existingX : findColumnByValues(trace?.x, data.data.grid);
+              const inferredY = existingY ? existingY : findColumnByValues(trace?.y, data.data.grid);
+              if (inferredX || inferredY) {
+                trace.customdata = { ...(trace.customdata || {}), ...(inferredX ? { xColumn: inferredX } : {}), ...(inferredY ? { yColumn: inferredY } : {}) };
+              }
+              return trace;
+            });
+          }
+          setChartData(incomingChart);
+        } else {
+          setChartData(null);
+        }
+
         if (Array.isArray(data.data.messages)) {
           setMessages(data.data.messages);
         } else {
@@ -302,6 +336,7 @@ function Dashboard() {
             const data = await response.json();
             if (data.status === 'success' && data.data) {
               setGridData(data.data);
+              setChartData(null);
               toast.success("File reset successfully");
             }
           } catch (error) {
@@ -323,8 +358,6 @@ function Dashboard() {
     event.stopPropagation();
 
     if (!sessionId) return;
-
-
 
     toast("Delete file?", {
       description: "This will delete the file. This action cannot be undone.",
@@ -367,7 +400,7 @@ function Dashboard() {
   return (
     <div className="h-screen flex bg-zinc-50 font-sans text-zinc-900 selection:bg-zinc-900 selection:text-white">
       <Toaster position="top-center" />
-      <div className={`bg-white border-r border-zinc-100 transition-all duration-500 ease-in-out ${sidebarOpen ? 'w-80' : 'w-0'} overflow-hidden flex flex-col shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-20`}>
+      <aside className={`bg-white border-r border-zinc-100 transition-all duration-500 ease-in-out ${sidebarOpen ? 'w-72' : 'w-0'} overflow-hidden flex flex-col shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-20`}>
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-zinc-900/20">
@@ -424,7 +457,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
+      </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50/50">
         <div className="px-8 py-6 flex items-center justify-between">
@@ -515,13 +548,15 @@ function Dashboard() {
 
 
           {appState === 'view' && gridData && (
-            <>
-              <div className="h-full flex flex-col animate-in fade-in duration-500 pb-24">
-                <div className="flex flex-col lg:flex-row gap-4 h-full transition-all duration-500">
-                  <div className={`bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col transition-all duration-500 ${chartData ? 'h-1/2 lg:h-full lg:w-[60%]' : 'h-full w-full'}`}>
-                    <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-700">
+            <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
+              <div className="flex flex-col lg:flex-row gap-6 h-full">
+
+                {/* Data Grid Panel */}
+                <div className={`flex flex-col transition-all duration-500 ease-in-out ${chartData ? 'lg:w-[55%] h-[50%] lg:h-full' : 'w-full h-full'}`}>
+                  <div className="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full ring-1 ring-zinc-900/5">
+                    <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/80 backdrop-blur-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-700 ring-1 ring-emerald-900/10">
                           <FileSpreadsheet className="w-4 h-4" />
                         </div>
                         <div>
@@ -530,18 +565,19 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                      <div className="relative group">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-600 transition-colors" />
                         <input
                           type="text"
                           placeholder="Search data..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-9 pr-4 py-1.5 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 w-64 transition-all"
+                          className="pl-9 pr-4 py-1.5 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 w-64 transition-all shadow-sm"
                         />
                       </div>
                     </div>
-                    <div className="flex-1 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
+
+                    <div className="flex-1 overflow-hidden relative">
                       <DataGrid
                         columns={gridData.columns.map(col => {
                           const isLargeDataset = gridData.columns.length > 8;
@@ -549,7 +585,8 @@ function Dashboard() {
                             key: col,
                             name: col,
                             resizable: true,
-                            width: isLargeDataset ? 180 : `${100 / gridData.columns.length}%`
+                            width: isLargeDataset ? 180 : `${100 / gridData.columns.length}%`,
+                            headerCellClass: 'bg-zinc-50/50 text-zinc-700 font-medium'
                           };
                         })}
                         rows={filteredRows}
@@ -560,15 +597,23 @@ function Dashboard() {
                         }}
                         style={{ height: '100%' }}
                       />
-
                     </div>
                   </div>
-                  {chartData && (
-                    <div className="h-1/2 lg:h-full lg:w-[40%] animate-in slide-in-from-right duration-500">
-                      <ChartViewer chartData={chartData} onClose={() => setChartData(null)} />
-                    </div>
-                  )}
                 </div>
+
+                {/* Chart Panel */}
+                {chartData && (
+                  <div className="flex flex-col items-end transition-all duration-500 ease-in-out lg:w-[45%] h-[50%] lg:h-full gap-4 w-full">
+                    <div className="lg:w-full h-[50%] lg:h-full animate-in slide-in-from-right-10 fade-in duration-500">
+                      <ChartViewer
+                        chartData={chartData}
+                        gridData={gridData}
+                        onClose={() => setChartData(null)}
+                        className="h-full ring-1 ring-zinc-900/5 shadow-sm"
+                      />
+                    </div>  
+                  </div>
+                )}
               </div>
 
               <ChatBox
@@ -584,7 +629,7 @@ function Dashboard() {
                 onChartGenerated={setChartData}
                 sessionId={sessionId}
               />
-            </>
+            </div>
           )}
 
 
@@ -610,7 +655,7 @@ function Dashboard() {
               <div className="fixed inset-0 bg-zinc-50 flex items-center justify-center z-50">
                 <div className="flex flex-col items-center gap-4 animate-pulse">
                   <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center shadow-xl shadow-zinc-900/20">
-                    <FileSpreadsheet className="w-8 h-8 text-white" />
+                    <img src="./DataMind_Logo.svg" alt="Logo" className='w-10 h-10 bg-white rounded' />
                   </div>
                   <div className="text-center">
                     <h2 className="text-xl font-bold text-zinc-900 tracking-tight">DataMind</h2>

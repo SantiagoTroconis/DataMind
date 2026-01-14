@@ -7,6 +7,7 @@ class Command(Base):
     id = Column(Integer, primary_key=True)
     conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
     prompt = Column(Text, nullable=False)
+    chart_generated_code = Column(Text, nullable=True)
     generated_code = Column(Text, nullable=False)
     explanation = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -16,6 +17,7 @@ class Command(Base):
         return {
             "id": self.id,
             "prompt": self.prompt,
+            "chart_generated_code": self.chart_generated_code,
             "generated_code": self.generated_code,
             "explanation": self.explanation,
             "is_active": self.is_active,
