@@ -123,7 +123,7 @@ export const ChartViewer: React.FC<ChartViewerProps> = ({ chartData, gridData, o
                     </button>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 rounded-lg hover:bg-zinc-100 border border-transparent hover:border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-zinc-600 transition-all"
+                        className="w-8 h-8 rounded-lg hover:bg-zinc-100 border border-transparent hover:border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-zinc-600 transition-all cursor-pointer"
                         title="Close Chart"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

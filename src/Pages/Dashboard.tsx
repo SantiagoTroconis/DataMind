@@ -397,29 +397,50 @@ function Dashboard() {
     });
   };
 
+
+  const handleCloseChart = () => {
+    toast("Close chart?", {
+      description: "This will close the current chart view.",
+      action: { 
+        label: "Confirm",
+        onClick: () => {
+          setChartData(null);
+        }
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => { },
+      },
+    });
+  };
+
+
+
+
+
   return (
-    <div className="h-screen flex bg-zinc-50 font-sans text-zinc-900 selection:bg-zinc-900 selection:text-white">
+    <div className="h-screen flex bg-slate-50 font-sans text-slate-900 selection:bg-slate-900 selection:text-white">
       <Toaster position="top-center" />
-      <aside className={`bg-white border-r border-zinc-100 transition-all duration-500 ease-in-out ${sidebarOpen ? 'w-72' : 'w-0'} overflow-hidden flex flex-col shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-20`}>
+      <aside className={`bg-slate-900 border-r border-slate-800 transition-all duration-500 ease-in-out ${sidebarOpen ? 'w-72' : 'w-0'} overflow-hidden flex flex-col shadow-xl z-20`}>
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-zinc-900/20">
-              <img src="./DataMind_Logo.svg" alt="" className="bg-white h-full w-full rounded-full" />
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+              <img src="./DataMind_Logo.svg" alt="" className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="font-bold text-zinc-900 text-base tracking-tight">DataMind</h2>
-              <p className="text-xs text-zinc-400 font-medium">Workspace</p>
+              <h2 className="font-bold text-white text-base tracking-tight">DataMind</h2>
+              <p className="text-xs text-slate-400 font-medium">Workspace</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 p-2 rounded-lg transition-colors">
+          <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
         </div>
 
         <div className="px-6 py-2">
-          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl cursor-pointer transition-all  group">
-            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-white/20 transition-colors">
-              <Upload className="w-4 h-4" />
+          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 bg-white hover:bg-slate-50 text-slate-900 rounded-lg cursor-pointer transition-all shadow-sm group">
+            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center group-hover:bg-slate-800 transition-colors">
+              <Upload className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 text-left">
               <p className="text-sm font-semibold">New Conversation</p>
@@ -433,25 +454,25 @@ function Dashboard() {
             />
           </label>
 
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Your files</h3>
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Your files</h3>
           <div className="space-y-1 relative">
-            <div className="absolute left-[19px] top-4 bottom-4 w-full bg-zinc-100 -z-10">
+            <div className="absolute left-[19px] top-4 bottom-4 w-full bg-white/5 -z-10">
               {
                 conversations.length > 0 ? conversations.map((conversation) => (
-                  <div key={conversation.id} className="flex items-center gap-4 p-2 cursor-pointer hover:bg-zinc-50 rounded-lg border-zinc-100" onClick={() => handleFileSelect(conversation)}>
-                    <div className="w-8 h-8 bg-zinc-900 rounded-xl flex items-center justify-center shadow-lg shadow-zinc-900/20 p-2">
-                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                  <div key={conversation.id} className="flex items-center gap-4 p-2 cursor-pointer hover:bg-white/10 rounded-lg" onClick={() => handleFileSelect(conversation)}>
+                    <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center p-2">
+                      <FileSpreadsheet className="w-4 h-4 text-blue-400" />
                     </div>
                     <div>
                       <div className="flex items-center gap-4">
-                        <h2 className="font-medium text-zinc-900 tracking-tight">{conversation.filename}</h2>
-                        <button onClick={(e) => handleDelete(conversation.id, e)} className="text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 p-2 rounded-lg transition-colors cursor-pointer"><Trash className="w-4 h-4" /></button>
+                        <h2 className="font-medium text-white tracking-tight">{conversation.filename}</h2>
+                        <button onClick={(e) => handleDelete(conversation.id, e)} className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors cursor-pointer"><Trash className="w-4 h-4" /></button>
                       </div>
-                      <p className="text-xs text-zinc-400 font-medium">Workspace</p>
+                      <p className="text-xs text-slate-400 font-medium">Workspace</p>
                     </div>
                   </div>
                 )) : (
-                  <p className="text-xs text-zinc-400 font-medium w-full">No files uploaded</p>
+                  <p className="text-xs text-slate-400 font-medium w-full">No files uploaded</p>
                 )
               }
             </div>
@@ -459,31 +480,31 @@ function Dashboard() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-zinc-50/50">
-        <div className="px-8 py-6 flex items-center justify-between">
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        <div className="px-8 py-6 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-4">
             {!sidebarOpen && (
-              <button onClick={() => setSidebarOpen(true)} className="text-zinc-400 hover:text-zinc-600 hover:bg-white p-2 rounded-lg transition-all shadow-sm border border-transparent hover:border-zinc-200">
+              <button onClick={() => setSidebarOpen(true)} className="text-slate-400 hover:text-slate-900 hover:bg-slate-50 p-2 rounded-lg transition-all border border-slate-200">
                 <ChevronRight className="w-5 h-5" />
               </button>
             )}
-            <h1 className="text-xl font-bold text-zinc-900 tracking-tight">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               {fileName || 'New Analysis'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 mr-2 bg-white/50 p-1 rounded-lg border border-zinc-200/50">
+            <div className="flex items-center gap-1 mr-2 bg-white p-1 rounded-lg border border-slate-200">
               <button
-                className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-white rounded-md transition-all hover:shadow-sm disabled:opacity-30 cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-all disabled:opacity-30 cursor-pointer"
                 title="Undo"
                 onClick={handleUndo}
                 disabled={currentFile === null}
               >
                 <Undo className="w-4 h-4" />
               </button>
-              <div className="w-px h-4 bg-zinc-200"></div>
+              <div className="w-px h-4 bg-slate-200"></div>
               <button
-                className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-white rounded-md transition-all hover:shadow-sm disabled:opacity-30 cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-all disabled:opacity-30 cursor-pointer"
                 title="Redo"
                 onClick={handleReset}
                 disabled={currentFile === null}
@@ -492,13 +513,13 @@ function Dashboard() {
               </button>
             </div>
 
-            <button className="px-4 py-2 text-zinc-600 hover:text-zinc-900 hover:bg-white cursor-pointer rounded-lg transition font-medium text-sm" onClick={handleExport}  >
+            <button className="px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer rounded-lg transition font-medium text-sm border border-slate-200" onClick={handleExport}  >
               Export
             </button>
-            <button onClick={handleLogout} className="px-4 py-2 text-zinc-600 hover:text-zinc-900 hover:bg-white cursor-pointer rounded-lg transition font-medium text-sm">
+            <button onClick={handleLogout} className="px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer rounded-lg transition font-medium text-sm border border-slate-200">
               <LogOut className="w-5 h-5" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-900 ml-2">
+            <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white ml-2">
               {user?.email.slice(0, 2).toUpperCase()}
             </div>
           </div>
@@ -509,24 +530,24 @@ function Dashboard() {
             <div className="h-full flex items-center justify-center">
               <div className="text-center max-w-2xl w-full">
                 <label htmlFor="file-upload" className="group cursor-pointer block">
-                  <div className="relative overflow-hidden bg-white border border-dashed border-zinc-300 rounded-3xl p-20 transition-all duration-300 group-hover:border-zinc-400 group-hover:shadow-xl group-hover:shadow-zinc-200/50">
-                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative overflow-hidden bg-white border border-dashed border-slate-300 rounded-2xl p-20 transition-all duration-300 group-hover:border-blue-500 group-hover:shadow-lg">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                     <div className="relative z-10 flex flex-col items-center">
-                      <div className="w-20 h-20 bg-zinc-50 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                        <Upload className="w-8 h-8 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
+                      <div className="w-20 h-20 bg-slate-50 rounded-xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300">
+                        <Upload className="w-8 h-8 text-slate-400 group-hover:text-blue-600 transition-colors" />
                       </div>
 
-                      <h3 className="text-3xl font-bold text-zinc-900 mb-4 tracking-tight">
+                      <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
                         {isUploading ? 'Uploading...' : 'Upload Data'}
                       </h3>
-                      <p className="text-zinc-500 mb-8 text-lg max-w-md mx-auto leading-relaxed">
+                      <p className="text-slate-600 mb-8 text-lg max-w-md mx-auto leading-relaxed">
                         {isUploading ? 'Please wait while we process your file.' : 'Drag and drop your spreadsheet here to start analyzing with AI.'}
                       </p>
                       {isUploading ? (
-                        <div className="w-8 h-8 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
                       ) : (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 text-xs font-medium text-zinc-500">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-xs font-medium text-slate-600">
                           <FileSpreadsheet className="w-3 h-3" />
                           <span>.xlsx, .csv supported</span>
                         </div>
@@ -553,26 +574,26 @@ function Dashboard() {
 
                 {/* Data Grid Panel */}
                 <div className={`flex flex-col transition-all duration-500 ease-in-out ${chartData ? 'lg:w-[55%] h-[50%] lg:h-full' : 'w-full h-full'}`}>
-                  <div className="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full ring-1 ring-zinc-900/5">
-                    <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/80 backdrop-blur-sm">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-700 ring-1 ring-emerald-900/10">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
                           <FileSpreadsheet className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-zinc-900">Data Preview</h3>
-                          <p className="text-xs text-zinc-500">{filteredRows.length} rows • {gridData.columns.length} columns</p>
+                          <h3 className="text-sm font-semibold text-slate-900">Data Preview</h3>
+                          <p className="text-xs text-slate-600">{filteredRows.length} rows • {gridData.columns.length} columns</p>
                         </div>
                       </div>
 
                       <div className="relative group">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-600 transition-colors" />
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                         <input
                           type="text"
                           placeholder="Search data..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-9 pr-4 py-1.5 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 w-64 transition-all shadow-sm"
+                          className="pl-9 pr-4 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 transition-all"
                         />
                       </div>
                     </div>
@@ -586,7 +607,7 @@ function Dashboard() {
                             name: col,
                             resizable: true,
                             width: isLargeDataset ? 180 : `${100 / gridData.columns.length}%`,
-                            headerCellClass: 'bg-zinc-50/50 text-zinc-700 font-medium'
+                            headerCellClass: 'bg-slate-50 text-slate-700 font-medium'
                           };
                         })}
                         rows={filteredRows}
@@ -608,8 +629,8 @@ function Dashboard() {
                       <ChartViewer
                         chartData={chartData}
                         gridData={gridData}
-                        onClose={() => setChartData(null)}
-                        className="h-full ring-1 ring-zinc-900/5 shadow-sm"
+                        onClose={() => handleCloseChart()}
+                        className="h-full shadow-sm"
                       />
                     </div>  
                   </div>
@@ -634,16 +655,16 @@ function Dashboard() {
 
 
           {appState === 'result' && (
-            <div className="fixed inset-0 bg-zinc-900/20 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-6 shadow-2xl border border-white/50 max-w-sm w-full mx-4">
+            <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-6 shadow-xl border border-slate-200 max-w-sm w-full mx-4">
                 <div className="relative">
-                  <div className="w-16 h-16 border-4 border-zinc-100 border-t-zinc-900 rounded-full animate-spin" />
+                  <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-zinc-900" />
+                    <Sparkles className="w-6 h-6 text-slate-900" />
                   </div>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-zinc-900 mb-1">Processing Data</h3>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Processing Data</h3>
                 </div>
               </div>
             </div>
@@ -652,13 +673,13 @@ function Dashboard() {
           {/* Initial Loading State */}
           {
             isLoading && (
-              <div className="fixed inset-0 bg-zinc-50 flex items-center justify-center z-50">
+              <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
                 <div className="flex flex-col items-center gap-4 animate-pulse">
-                  <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center shadow-xl shadow-zinc-900/20">
-                    <img src="./DataMind_Logo.svg" alt="Logo" className='w-10 h-10 bg-white rounded' />
+                  <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
+                    <img src="./DataMind_Logo.svg" alt="Logo" className='w-10 h-10 bg-white rounded-lg' />
                   </div>
                   <div className="text-center">
-                    <h2 className="text-xl font-bold text-zinc-900 tracking-tight">DataMind</h2>
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">DataMind</h2>
                   </div>
                 </div>
               </div>
