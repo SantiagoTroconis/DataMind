@@ -51,6 +51,7 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const findColumnByValues = (arr: unknown[] | undefined, grid: { columns: string[]; rows: Record<string, unknown>[] } | null) => {
     if (!arr || !grid) return null;
@@ -195,6 +196,7 @@ function Dashboard() {
     try {
       setSessionId(conversation.id);
       sessionStorage.setItem('current_session_id', conversation.id);
+      setActiveConversationId(conversation.id);
 
       setFileName(conversation.filename);
       setCurrentFile(null);
@@ -401,7 +403,7 @@ function Dashboard() {
   const handleCloseChart = () => {
     toast("Close chart?", {
       description: "This will close the current chart view.",
-      action: { 
+      action: {
         label: "Confirm",
         onClick: () => {
           setChartData(null);
@@ -438,7 +440,7 @@ function Dashboard() {
         </div>
 
         <div className="px-6 py-2">
-          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 bg-white hover:bg-slate-50 text-slate-900 rounded-lg cursor-pointer transition-all shadow-sm group">
+          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 hover:bg-slate-50 text-slate-900 rounded-lg cursor-pointer transition-all shadow-sm group text-white hover:text-black">
             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center group-hover:bg-slate-800 transition-colors">
               <Upload className="w-4 h-4 text-white" />
             </div>
@@ -456,17 +458,38 @@ function Dashboard() {
 
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Your files</h3>
           <div className="space-y-1 relative">
-            <div className="absolute left-[19px] top-4 bottom-4 w-full bg-white/5 -z-10">
+            <div className="absolute left-[5px] top-4 bottom-4 w-full bg-white/5 -z-10">
               {
                 conversations.length > 0 ? conversations.map((conversation) => (
-                  <div key={conversation.id} className="flex items-center gap-4 p-2 cursor-pointer hover:bg-white/10 rounded-lg" onClick={() => handleFileSelect(conversation)}>
-                    <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center p-2">
-                      <FileSpreadsheet className="w-4 h-4 text-blue-400" />
+                  <div
+                    key={conversation.id}
+                    className={`flex items-center gap-4 p-2 cursor-pointer rounded-lg transition-all ${activeConversationId === conversation.id
+                      ? 'bg-white/15 ring-1 ring-white/20 shadow-lg'
+                      : 'hover:bg-white/10'
+                      }`}
+                    onClick={() => handleFileSelect(conversation)}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center p-2 ${activeConversationId === conversation.id
+                      ? 'bg-blue-500/20'
+                      : 'bg-blue-500/10'
+                      }`}>
+                      <FileSpreadsheet className={`w-4 h-4 ${activeConversationId === conversation.id
+                        ? 'text-blue-300'
+                        : 'text-blue-400'
+                        }`} />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-4">
-                        <h2 className="font-medium text-white tracking-tight">{conversation.filename}</h2>
-                        <button onClick={(e) => handleDelete(conversation.id, e)} className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors cursor-pointer"><Trash className="w-4 h-4" /></button>
+                        <h2 className={`text-sm tracking-tight ${activeConversationId === conversation.id
+                          ? 'text-white'
+                          : 'text-white/90'
+                          }`}>{conversation.filename}</h2>
+                        <button
+                          onClick={(e) => handleDelete(conversation.id, e)}
+                          className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
                       </div>
                       <p className="text-xs text-slate-400 font-medium">Workspace</p>
                     </div>
@@ -632,7 +655,7 @@ function Dashboard() {
                         onClose={() => handleCloseChart()}
                         className="h-full shadow-sm"
                       />
-                    </div>  
+                    </div>
                   </div>
                 )}
               </div>
@@ -659,9 +682,7 @@ function Dashboard() {
               <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-6 shadow-xl border border-slate-200 max-w-sm w-full mx-4">
                 <div className="relative">
                   <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-slate-900" />
-                  </div>
+
                 </div>
                 <div className="text-center">
                   <h3 className="text-lg font-bold text-slate-900 mb-1">Processing Data</h3>

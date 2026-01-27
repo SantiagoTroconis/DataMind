@@ -82,7 +82,7 @@ export const Auth = () => {
                         <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-blue-400/20 rounded-full animate-ping animation-delay-2000"></div>
                         <div className="absolute bottom-1/3 left-1/2 w-2 h-2 bg-blue-400/20 rounded-full animate-ping animation-delay-4000"></div>
                     </div>
-                    
+
                     <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
                         <div>
                             <div className="flex items-center gap-3 mb-16">
@@ -91,13 +91,12 @@ export const Auth = () => {
                                 </div>
                                 <span className="text-xl font-bold">DataMind</span>
                             </div>
-                            
+
                             <div className="space-y-8 max-w-md">
                                 <div>
-                                    <h1 className="text-4xl font-bold mb-4 leading-tight">Transform your data into insights</h1>
-                                    <p className="text-slate-400 text-lg">Enterprise-grade analytics platform trusted by leading companies worldwide.</p>
+                                    <h1 className="text-4xl font-bold mb-4 leading-tight">Transform your data </h1>
                                 </div>
-                                
+
                                 <div className="space-y-6 pt-8">
                                     <div className="flex items-start gap-4">
                                         <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-1">
@@ -121,21 +120,11 @@ export const Auth = () => {
                                             <p className="text-sm text-slate-400">Bank-level encryption and compliance with global standards</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-1">
-                                            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold mb-1">Seamless Integration</h3>
-                                            <p className="text-sm text-slate-400">Connect with 100+ data sources and tools effortlessly</p>
-                                        </div>
-                                    </div>
+
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="text-sm text-slate-500">
                             © 2026 DataMind. All rights reserved.
                         </div>
@@ -153,7 +142,7 @@ export const Auth = () => {
                         </div>
 
                         <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>
+                            <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome</h2>
                         </div>
 
                         <form onSubmit={handleSignIn} className="space-y-5" autoComplete="off">
@@ -182,7 +171,8 @@ export const Auth = () => {
                             </div>
                             <button
                                 type="submit"
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                                className={`w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={loading}
                             >
                                 {loading ? "Signing In..." : "Sign In"}
                             </button>

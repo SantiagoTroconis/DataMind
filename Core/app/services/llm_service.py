@@ -7,7 +7,10 @@ import json
 class LLMService:
     @staticmethod
     def generate_transformation_code(prompt: str, columns: List[str], sample_data: dict = None) -> tuple[str, str]:
-        api_key = "AIzaSyA4SjXYjZpvqec2uLEn9ka0hlF1aekD0SQ"
+        api_key = os.getenv('GEMINI_API_KEY')
+        
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not set. Please configure it in your .env file.")
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash', generation_config={"response_mime_type": "application/json"})
