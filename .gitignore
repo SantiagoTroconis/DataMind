@@ -25,3 +25,6 @@ dist-ssr
 
 .env
 Core/uploads/
+
+# Planning docs (local only)
+.planning/
