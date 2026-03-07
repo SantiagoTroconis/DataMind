@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Register } from "./Register";
 import { toast, Toaster } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 
 export const Auth = () => {
     const [view, setView] = useState<'login' | 'register'>('login');
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sessionExpired = searchParams.get('expired') === '1';
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -36,7 +38,8 @@ export const Auth = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const err = await response.json().catch(() => ({}));
+                throw new Error((err as { error?: string }).error || 'Login failed');
             }
 
             const data = await response.json();
@@ -52,7 +55,7 @@ export const Auth = () => {
 
         } catch (e) {
             console.error(e);
-            toast.error('Login failed');
+            toast.error(e instanceof Error ? e.message : 'Login failed');
         } finally {
             setLoading(false);
         }
@@ -144,6 +147,12 @@ export const Auth = () => {
                         <div className="mb-8">
                             <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome</h2>
                         </div>
+
+                        {sessionExpired && (
+                            <div className="mb-4 rounded-md bg-amber-900/40 border border-amber-700 px-4 py-3 text-sm text-amber-200">
+                                Tu sesión expiró. Por favor inicia sesión nuevamente.
+                            </div>
+                        )}
 
                         <form onSubmit={handleSignIn} className="space-y-5" autoComplete="off">
                             <div>
