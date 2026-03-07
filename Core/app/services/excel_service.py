@@ -43,7 +43,7 @@ class ExcelService:
             if file.filename.lower().endswith('.csv'):
                 df = pd.read_csv(file, keep_default_na=False, na_values=[''])
             else:
-                df = pd.read_excel(file, keep_default_na=False, na_values=[''])            
+                df = pd.read_excel(file, sheet_name=0, keep_default_na=False, na_values=[''])
             df.columns = df.columns.astype(str)
             
             columns = df.columns.tolist()
@@ -68,7 +68,7 @@ class ExcelService:
             if file.filename.lower().endswith('.csv'):
                 df = pd.read_csv(file, keep_default_na=False, na_values=[''])
             else:
-                df = pd.read_excel(file, keep_default_na=False, na_values=[''])
+                df = pd.read_excel(file, sheet_name=0, keep_default_na=False, na_values=[''])
             # Ensure column names are strings
             df.columns = df.columns.astype(str)
             return df

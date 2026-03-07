@@ -9,6 +9,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 excel_bp = Blueprint('excel', __name__)
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 @excel_bp.post('/upload')
 @jwt_required()
 def upload_excel():
@@ -16,8 +18,20 @@ def upload_excel():
 
     if 'file' not in request.files:
         return jsonify({"error": "No se envió el archivo"}), 400
-    
+
     file = request.files['file']
+
+    # Extension check — only .xlsx and .xls allowed
+    filename = file.filename or ''
+    if not filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({"error": "Solo se permiten archivos .xlsx o .xls"}), 400
+
+    # Size check — must use seek/tell pattern; MUST reset with seek(0) afterwards
+    file.seek(0, 2)          # seek to end
+    file_size = file.tell()  # get size in bytes
+    file.seek(0)             # CRITICAL: reset to start — without this, file.save() writes 0 bytes
+    if file_size > MAX_FILE_SIZE:
+        return jsonify({"error": "El archivo supera el límite de 10 MB"}), 400
 
     try:
         session_id = StateManager.create_session(current_user_id, file, file.filename)

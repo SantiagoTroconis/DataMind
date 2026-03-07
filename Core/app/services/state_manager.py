@@ -55,7 +55,7 @@ class StateManager:
             if conv.file_path.endswith('.csv'):
                 initial_df = pd.read_csv(conv.file_path)
             else:
-                initial_df = pd.read_excel(conv.file_path)
+                initial_df = pd.read_excel(conv.file_path, sheet_name=0)
 
 
             initial_df.columns = initial_df.columns.astype(str)
