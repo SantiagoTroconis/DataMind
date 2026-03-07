@@ -28,15 +28,15 @@ def register():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    # purpose = data.get('purpose')
 
-    user, error = AuthService.register(email, password)
-    
+    token, user, error = AuthService.register(email, password)
+
     if error:
         return jsonify({"error": error}), 400
 
     return jsonify({
         "status": "success",
         "message": "Usuario registrado exitosamente",
+        "token": token,
         "user": user.serialize()
     }), 201
