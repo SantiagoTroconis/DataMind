@@ -7,6 +7,7 @@ import 'react-data-grid/lib/styles.css';
 import { ChartViewer } from '../Components/ChartViewer';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import { apiFetch } from '../utils/api';
 
 export interface Message {
   id: string;
@@ -150,16 +151,16 @@ function Dashboard() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5000/excel/upload', {
+      const response = await apiFetch('/excel/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        // NOTE: do NOT set Content-Type manually — browser sets multipart boundary automatically
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Error al subir el archivo');
+        const data = await response.json().catch(() => ({}));
+        toast.error((data as { error?: string }).error || 'Upload failed');
+        return; // stop processing — do not proceed to update grid state
       }
 
       const textText = await response.text();
