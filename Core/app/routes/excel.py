@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, Response, stream_with_context
 import json
 import pandas as pd
+import openpyxl
 from app.services.excel_service import ExcelService
 from app.services.llm_service import LLMService
 from app.services.code_execution_service import CodeExecutionService
@@ -102,17 +103,25 @@ def transform_excel():
             yield format_sse(json.dumps({"step": "Ejecutando..."}), event="progress")
 
             if intent == 'FORMULA_WRITE':
-                # Parse the JSON list of formula instructions from the code field
-                formula_instructions = json.loads(code)
+                # code may be already a list (parsed by LLM service) or a JSON string
+                formula_instructions = code if isinstance(code, list) else json.loads(code)
                 CodeExecutionService.apply_formula_write(file_path, formula_instructions)
                 StateManager.add_command(
                     session_id, prompt,
-                    code,  # store raw JSON instructions as code
+                    json.dumps(formula_instructions),  # must be a string for Text column
                     explanation,
                     intent_type='FORMULA_WRITE'
                 )
-                # Re-read file keeping formula strings (data_only=False)
-                updated_df = pd.read_excel(file_path, sheet_name=0, engine='openpyxl')
+                # Re-read keeping formula strings — pd.read_excel can't do this,
+                # so we use openpyxl directly (data_only=False preserves formula text)
+                wb = openpyxl.load_workbook(file_path, data_only=False)
+                ws = wb.active
+                rows = list(ws.values)
+                if rows:
+                    headers = [str(c) if c is not None else '' for c in rows[0]]
+                    updated_df = pd.DataFrame(rows[1:], columns=headers)
+                else:
+                    updated_df = pd.DataFrame()
                 data = ExcelService.format_dataframe_response(updated_df)
                 yield format_sse(json.dumps({
                     "step": "Listo",
@@ -201,6 +210,10 @@ def undo_excel():
         return jsonify({"error": "Faltan datos (session_id)"}), 400
 
     try:
+        # Peek at command count before undo to detect no-op
+        pre_session = StateManager.get_session(session_id, current_user_id)
+        had_commands = len(pre_session['commands']) > 0
+
         StateManager.undo_last_command(session_id)
 
         session = StateManager.get_session(session_id, current_user_id)
@@ -208,10 +221,25 @@ def undo_excel():
 
         data = ExcelService.format_dataframe_response(current_df)
 
+        # Chart sync — re-execute active chart code post-undo
+        chart_data = None
+        has_chart = False
+        chart_code = StateManager.get_active_chart_code(session_id)
+        if chart_code:
+            try:
+                chart_json = CodeExecutionService.execute_chart_generation(current_df, chart_code)
+                chart_data = json.loads(chart_json)
+                has_chart = True
+            except Exception as chart_err:
+                print(f"[UNDO] Chart re-execution failed: {chart_err}")
+
         return jsonify({
             "status": "success",
             "message": "Deshacer exitoso",
-            "data": data
+            "data": data,
+            "chart_data": chart_data,
+            "has_chart": has_chart,
+            "undone": had_commands
         }), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
