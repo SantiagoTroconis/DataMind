@@ -32,7 +32,7 @@ class AuthService:
             return token, user, None
         except Exception as e:
             session.rollback()
-            raise e
+            return None, None, "Database error. Please try again."
         finally:
             session.close()
 

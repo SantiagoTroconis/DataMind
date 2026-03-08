@@ -29,7 +29,10 @@ def register():
     email = data.get('email')
     password = data.get('password')
 
-    token, user, error = AuthService.register(email, password)
+    try:
+        token, user, error = AuthService.register(email, password)
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
 
     if error:
         return jsonify({"error": error}), 400
