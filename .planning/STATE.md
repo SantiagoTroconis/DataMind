@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-ai-pipeline 02-02-PLAN.md
-last_updated: "2026-03-08T18:07:08.936Z"
+stopped_at: "Completed 02-ai-pipeline 02-03-PLAN.md (awaiting checkpoint:human-verify)"
+last_updated: "2026-03-08T18:21:41.378Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P03 | 12 | 2 tasks | 3 files |
 | Phase 02-ai-pipeline P01 | 8 | 2 tasks | 5 files |
 | Phase 02-ai-pipeline P02 | 6 | 2 tasks | 5 files |
+| Phase 02-ai-pipeline P03 | 45 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 02-ai-pipeline]: google.generativeai removed; litellm.completion is the only LLM call path; LLM_MODEL env var controls routing with default gemini/gemini-2.5-flash
 - [Phase 02-ai-pipeline]: User prompt placed in user role message only — never interpolated into system string (SEC-02 prompt injection protection)
 - [Phase 02-ai-pipeline]: exec sandbox: FORBIDDEN_PATTERNS pre-scan + __builtins__={} + post-exec row validation (empty df rejected, >10x rows rejected)
+- [Phase 02-ai-pipeline]: Flask test client SSE lazy evaluation: patcher.stop() must be deferred until after resp.data access in tests
+- [Phase 02-ai-pipeline]: SSE /transform consumer implemented in ChatBox.tsx (not Dashboard.tsx) — that is where the actual fetch call lives
+- [Phase 02-ai-pipeline]: FORMULA_WRITE stores JSON array in generated_code; _replay_session routes to apply_formula_write not exec
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T18:07:08.932Z
-Stopped at: Completed 02-ai-pipeline 02-02-PLAN.md
+Last session: 2026-03-08T18:21:41.375Z
+Stopped at: Completed 02-ai-pipeline 02-03-PLAN.md (awaiting checkpoint:human-verify)
 Resume file: None

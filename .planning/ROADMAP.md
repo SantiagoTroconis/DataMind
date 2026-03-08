@@ -13,7 +13,7 @@ DataMind is a brownfield project with an existing React + TypeScript frontend an
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Auth, JWT middleware, API key env vars, and file upload with conversation record creation (completed 2026-03-07)
-- [ ] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM
+- [x] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM (completed 2026-03-08)
 - [ ] **Phase 3: State Operations** - Undo, session resume, conversation history, and file TTL cleanup
 - [ ] **Phase 4: Frontend Integration** - Excel preview, split layout, download button, and full UI loop
 
@@ -92,6 +92,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete   | 2026-03-08 |
-| 2. AI Pipeline | 2/3 | In Progress|  |
+| 2. AI Pipeline | 3/3 | Complete   | 2026-03-08 |
 | 3. State Operations | 0/3 | Not started | - |
 | 4. Frontend Integration | 0/3 | Not started | - |

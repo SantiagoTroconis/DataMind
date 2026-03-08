@@ -28,8 +28,8 @@
 
 - [ ] **EDIT-01**: El contenido del archivo Excel se renderiza en pantalla como una vista de hoja (filas, columnas, celdas)
 - [ ] **EDIT-02**: El layout muestra el chat a un lado y la vista del Excel al otro (split layout)
-- [ ] **EDIT-03**: El usuario puede pedir por chat cambios en valores de celdas y estos se reflejan en la vista en tiempo real
-- [ ] **EDIT-04**: El usuario puede pedir por chat crear o modificar fórmulas (SUM, IF, VLOOKUP, etc.) y estas se aplican correctamente al archivo
+- [x] **EDIT-03**: El usuario puede pedir por chat cambios en valores de celdas y estos se reflejan en la vista en tiempo real
+- [x] **EDIT-04**: El usuario puede pedir por chat crear o modificar fórmulas (SUM, IF, VLOOKUP, etc.) y estas se aplican correctamente al archivo
 
 ### AI Chat
 
@@ -87,8 +87,8 @@
 | FILE-01 | Phase 1 | Complete |
 | SEC-01 | Phase 2 | Complete |
 | SEC-02 | Phase 2 | Complete |
-| EDIT-03 | Phase 2 | Pending |
-| EDIT-04 | Phase 2 | Pending |
+| EDIT-03 | Phase 2 | Complete |
+| EDIT-04 | Phase 2 | Complete |
 | CHAT-01 | Phase 2 | Complete |
 | CHAT-02 | Phase 2 | Complete |
 | FILE-02 | Phase 3 | Pending |
