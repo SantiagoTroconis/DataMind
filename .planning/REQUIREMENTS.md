@@ -9,7 +9,7 @@
 
 - [x] **AUTH-01**: El usuario puede registrarse con email y contraseña
 - [x] **AUTH-02**: El usuario puede iniciar sesión y mantener su sesión activa entre recargas
-- [ ] **AUTH-03**: El usuario autenticado puede acceder a sus conversaciones previas
+- [x] **AUTH-03**: El usuario autenticado puede acceder a sus conversaciones previas
 
 ### Security
 
@@ -35,13 +35,13 @@
 
 - [x] **CHAT-01**: El sistema soporta múltiples modelos de IA (Claude y GPT-4 como mínimo) de forma intercambiable vía LiteLLM
 - [x] **CHAT-02**: Tras cada cambio, la IA explica en lenguaje natural qué modificó y por qué
-- [ ] **CHAT-03**: El usuario puede deshacer el último cambio aplicado (undo)
-- [ ] **CHAT-04**: El historial del chat se preserva en la sesión y es visible al volver a la conversación
+- [x] **CHAT-03**: El usuario puede deshacer el último cambio aplicado (undo)
+- [x] **CHAT-04**: El historial del chat se preserva en la sesión y es visible al volver a la conversación
 
 ### Sessions
 
-- [ ] **SESS-01**: El usuario puede ver la lista de sus conversaciones anteriores
-- [ ] **SESS-02**: El usuario puede retomar una conversación anterior y ver el estado del archivo en ese punto
+- [x] **SESS-01**: El usuario puede ver la lista de sus conversaciones anteriores
+- [x] **SESS-02**: El usuario puede retomar una conversación anterior y ver el estado del archivo en ese punto
 
 ## v2 Requirements
 
@@ -92,11 +92,11 @@
 | CHAT-01 | Phase 2 | Complete |
 | CHAT-02 | Phase 2 | Complete |
 | FILE-02 | Phase 3 | Pending |
-| AUTH-03 | Phase 3 | Pending |
-| CHAT-03 | Phase 3 | Pending |
-| CHAT-04 | Phase 3 | Pending |
-| SESS-01 | Phase 3 | Pending |
-| SESS-02 | Phase 3 | Pending |
+| AUTH-03 | Phase 3 | Complete |
+| CHAT-03 | Phase 3 | Complete |
+| CHAT-04 | Phase 3 | Complete |
+| SESS-01 | Phase 3 | Complete |
+| SESS-02 | Phase 3 | Complete |
 | EDIT-01 | Phase 4 | Pending |
 | EDIT-02 | Phase 4 | Pending |
 | FILE-03 | Phase 4 | Pending |
