@@ -1,0 +1,96 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: planning
+stopped_at: Completed 02-ai-pipeline 02-01-PLAN.md
+last_updated: "2026-03-08T18:01:42.026Z"
+last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 4
+  percent: 0
+---
+
+# Project State
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-03-06)
+
+**Core value:** El flujo completo funciona: subir archivo Excel → chatear con IA → ver cambios en vivo → descargar resultado.
+**Current focus:** Phase 1 — Foundation
+
+## Current Position
+
+Phase: 1 of 4 (Foundation)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: —
+- Trend: —
+
+*Updated after each plan completion*
+| Phase 01-foundation P01 | 6 | 3 tasks | 13 files |
+| Phase 01-foundation P02 | 3 | 2 tasks | 5 files |
+| Phase 01-foundation P03 | 12 | 2 tasks | 3 files |
+| Phase 02-ai-pipeline P01 | 8 | 2 tasks | 5 files |
+
+## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- [Roadmap]: Charts (CHART-01/02/03) deferred to v2 — not in any v1 phase
+- [Roadmap]: SEC requirements (exec sandbox, prompt injection) land in Phase 2 with the AI pipeline — hardened before any feature depends on exec output
+- [Roadmap]: FILE-02 (TTL cleanup) assigned to Phase 3 — APScheduler job delivered alongside undo/session resume that complete the backend API contract
+- [Roadmap]: SheetJS pinned at 0.18.5 — DO NOT upgrade; versions above 0.18.5 have a commercial license
+- [Phase 01-foundation]: AuthService returns (token, user, error) 3-tuple for both register() and login() — consistent service layer contract
+- [Phase 01-foundation]: JWT token lifetime set to 7 days for all auth operations (was 30 min); DATABASE_URL from env only with placeholder fallback
+- [Phase 01-foundation]: apiFetch wrapper established as standard for all authenticated API calls; auth pages use plain fetch to avoid 401 loops
+- [Phase 01-foundation]: Extension and size checks live in route layer (excel.py) before create_session() — invalid files never touch disk
+- [Phase 01-foundation]: sheet_name=0 explicit on all pd.read_excel() calls to prevent multi-sheet workbook regressions
+- [Phase 01-foundation]: apiFetch replaces plain fetch in Dashboard.tsx upload handler so 401 interceptor is active; toast.error on non-ok with early return prevents corrupt grid state
+- [Phase 01-foundation]: DATABASE_URL=sqlite:///database.db uncommented — SQLite is the local dev database; fallback MySQL URL only used if env var absent
+- [Phase 01-foundation]: auth register() uses double-defense error handling: service layer returns error tuple on DB exception; route layer has secondary try/except returning JSON 500 (not bare HTML)
+- [Phase 01-foundation]: Gap 2 (/register URL) is a design clarification — register form lives at /auth via inline view-swap; /register was never a supported route, no code change needed
+- [Phase 02-ai-pipeline]: Wave 0 stubs use @pytest.mark.skip (not xfail) — stubs are known-missing, not expected-to-fail
+- [Phase 02-ai-pipeline]: litellm==1.82.0 pinned in requirements.txt; services imported at module level with ImportError guard for safe pytest collection
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- [Phase 2]: openpyxl chart API complexity — programmatic chart writes from AI output have non-obvious type mapping; warrants a targeted research pass at plan time
+- [Phase 4]: ExcelPreview merged cell support — react-data-grid 7.0.0-beta.47 has limited merged cell support; verify capability before committing; fortune-sheet may need to move from v2 to Phase 4 scope
+- [Phase 2]: LiteLLM version pin — run `pip show litellm` in Python 3.12 env before adding to requirements.txt; do not guess the version
+- [Phase 2]: Flask SSE + Gunicorn buffering — verify Gunicorn worker config does not buffer SSE; may need `--worker-class gevent`
+
+## Session Continuity
+
+Last session: 2026-03-08T18:01:42.023Z
+Stopped at: Completed 02-ai-pipeline 02-01-PLAN.md
+Resume file: None
