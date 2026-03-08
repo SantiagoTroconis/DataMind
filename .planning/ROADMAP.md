@@ -13,7 +13,7 @@ DataMind is a brownfield project with an existing React + TypeScript frontend an
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Auth, JWT middleware, API key env vars, and file upload with conversation record creation (completed 2026-03-07)
-- [x] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM (completed 2026-03-08)
+- [x] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM (completed 2026-03-08)
 - [ ] **Phase 3: State Operations** - Undo, session resume, conversation history, and file TTL cleanup
 - [ ] **Phase 4: Frontend Integration** - Excel preview, split layout, download button, and full UI loop
 
@@ -61,12 +61,12 @@ Plans:
   3. A user can see a list of their past conversations on the dashboard
   4. Files with expired TTLs are automatically removed from disk and their DB records cleaned up without manual intervention
   5. Chat history is visible when a user resumes a conversation — no history is lost between sessions
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Undo endpoint + Command soft-delete replay + chart/grid sync in undo response
-- [ ] 03-02: Session resume endpoints (conversation list, conversation detail with command replay) + chat history persistence
-- [ ] 03-03: File TTL — add `expires_at` to Conversation model + APScheduler cleanup job + `os.remove()` on conversation deletion
+- [ ] 03-01-PLAN.md — APScheduler install + test_state_ops.py (9 stubs) + /undo route extended with chart_data/has_chart/undone fields
+- [ ] 03-02-PLAN.md — Verify and harden session resume tests: GET /conversations, GET /conversation/<id>, cross-user 403
+- [ ] 03-03-PLAN.md — File TTL: expires_at on Conversation model + StateManager.create_session + jobs.py cleanup_expired_files + APScheduler wiring in create_app
 
 ### Phase 4: Frontend Integration
 **Goal**: Users can see their Excel file rendered in a split-pane layout alongside the chat, watch changes appear in real time, and download the modified file
