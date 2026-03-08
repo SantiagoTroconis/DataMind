@@ -10,6 +10,7 @@ class Conversation(Base):
     filename = Column(String(255), nullable=False)
     is_active = Column(Boolean(), default=True)
     created_at = Column(DateTime(), default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime(), nullable=True)
 
     def serialize(self):
         return {

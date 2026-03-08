@@ -1,9 +1,12 @@
 import pandas as pd
+from datetime import datetime, timedelta
 from config.database import SessionLocal
 from app.models.conversation import Conversation
 from app.models.command import Command
 from app.services.excel_service import ExcelService
 from app.services.code_execution_service import CodeExecutionService
+
+TTL_DAYS = 7  # File retention period; increase to make configurable via env
 
 class StateManager:
     @staticmethod
@@ -27,7 +30,8 @@ class StateManager:
             new_conv = Conversation(
                 user_id=user_id,
                 file_path=file_path,
-                filename=filename
+                filename=filename,
+                expires_at=datetime.utcnow() + timedelta(days=TTL_DAYS)
             )
             session.add(new_conv)
             session.commit()
