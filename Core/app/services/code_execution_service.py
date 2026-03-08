@@ -51,6 +51,16 @@ class CodeExecutionService:
             raise Exception(f"Code execution error: {str(e)}\nDetails: {error_details}")
 
     @staticmethod
+    def apply_formula_write(file_path: str, formula_instructions: list) -> None:
+        """Write formula strings to .xlsx cells on disk via openpyxl."""
+        import openpyxl
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
+        for instruction in formula_instructions:
+            ws[instruction["cell"]] = instruction["formula"]
+        wb.save(file_path)
+
+    @staticmethod
     def execute_chart_generation(df: pd.DataFrame, code: str) -> str:
         import plotly.express as px
         import plotly.graph_objects as go

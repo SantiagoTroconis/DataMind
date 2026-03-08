@@ -72,21 +72,22 @@ class StateManager:
             session.close()
 
     @staticmethod
-    def add_command(conversation_id: int, prompt: str, code: str, explanation: str = None, chart_code: str = None):
+    def add_command(conversation_id: int, prompt: str, code: str, explanation: str = None, chart_code: str = None, intent_type: str = 'DATA_MUTATION'):
         session = SessionLocal()
         try:
             # Clean up "future" (inactive) commands to maintain linear history
-            # If we are adding a new command, any command that was "undone" (is_active=False) 
+            # If we are adding a new command, any command that was "undone" (is_active=False)
             # and is chronologically "after" the current state should be removed.
             # Simplified approach: Delete ALL inactive commands for this conversation.
             session.query(Command).filter_by(conversation_id=conversation_id, is_active=False).delete()
-            
+
             cmd = Command(
                 conversation_id=conversation_id,
                 prompt=prompt,
                 generated_code=code,
                 chart_generated_code=chart_code,
                 explanation=explanation,
+                intent_type=intent_type,
                 is_active=True
             )
             session.add(cmd)

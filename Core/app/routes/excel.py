@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 import json
 import pandas as pd
 from app.services.excel_service import ExcelService
@@ -10,6 +10,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 excel_bp = Blueprint('excel', __name__)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def format_sse(data: str, event: str = None) -> str:
+    """Format a Server-Sent Event frame."""
+    msg = f'event: {event}\n' if event else ''
+    return msg + f'data: {data}\n\n'
+
 
 @excel_bp.post('/upload')
 @jwt_required()
@@ -36,10 +43,10 @@ def upload_excel():
     try:
         session_id = StateManager.create_session(current_user_id, file, file.filename)
         session_data = StateManager.get_session(session_id, current_user_id)
-        
+
         df = session_data['initial_df']
         data = ExcelService.format_dataframe_response(df)
-        
+
         return jsonify({
             "status": "success",
             "message": "Archivo cargado y conversación creada",
@@ -58,98 +65,130 @@ def transform_excel():
     current_user_id = get_jwt_identity()
     session_id = request.form.get('session_id')
     prompt = request.form.get('prompt')
-    
+
+    # Validate before entering SSE generator — return plain JSON 400 for missing/bad input
     if not session_id or not prompt:
         return jsonify({"error": "Faltan datos (session_id o prompt)"}), 400
 
-    try:
-        session = StateManager.get_session(session_id, current_user_id)
+    if len(prompt) > 2000:
+        return jsonify({"error": "El prompt es demasiado largo (máximo 2000 caracteres)"}), 400
 
-        # Obtenemos el DataFrame actual despues de aplicar todos los prompts
-        current_df = _replay_session(session)
-        
-        # Obtenemos la lista de columnas
-        columns = current_df.columns.tolist()
-        
-        # Obtenemos un sample de datos para el prompt
-        sample_data = None
-        if not current_df.empty:
-            sample_data = current_df.iloc[0].where(pd.notnull(current_df.iloc[0]), None).to_dict()
+    def generate():
+        try:
+            yield format_sse(json.dumps({"step": "Interpretando..."}), event="progress")
 
-        # Generamos el código
-        code_data = LLMService.generate_transformation_code(prompt, columns, sample_data)
-        
-        # Manejamos el nuevo formato de diccionario o el formato heredado de tupla
-        if isinstance(code_data, dict):
-            code = code_data['code']
-            explanation = code_data['explanation']
-            intent = code_data.get('intent', 'DATA_MUTATION')
-        else:
-            code, explanation = code_data
-            intent = 'DATA_MUTATION'
+            session = StateManager.get_session(session_id, current_user_id)
+            file_path = session['conversation'].file_path
 
-        if intent == 'VISUAL_UPDATE':
-            chart_json = CodeExecutionService.execute_chart_generation(current_df, code)
-            
-            # Store in DB
-            StateManager.add_command(
-                session_id, 
-                prompt, # User prompt
-                "pass", # No DF transformation code needed for pure chart
-                explanation,
-                chart_code=code # Store the CHART code
-            )
-            
-            return jsonify({
-                "status": "success",
-                "message": "Gráfico generado exitosamente",
-                "type": "chart",
-                "chart_data": json.loads(chart_json),
-                "has_chart": True,
-                "explanation": explanation,
-                "executed_code": code
-            }), 200
-            
-        else:
-            # 4. Store Command (Transformation)
-            StateManager.add_command(session_id, prompt, code, explanation)
-            
-            # 5. Execute New
-            modified_df = CodeExecutionService.execute_transformation(current_df, code)
-            
-            data = ExcelService.format_dataframe_response(modified_df)
-            
-            # Reactivity: Check DB for active chart
-            updated_chart_data = None
-            has_chart = False
-            chart_code = StateManager.get_active_chart_code(session_id)
-            
-            if chart_code:
-                try:
-                    chart_json = CodeExecutionService.execute_chart_generation(modified_df, chart_code)
-                    updated_chart_data = json.loads(chart_json)
-                    has_chart = True
-                except Exception as e:
-                    # Log error but don't fail request
-                    print(f"Reactive chart update failed: {e}")
-                    updated_chart_data = None
+            # Replay to get current DataFrame
+            current_df = _replay_session(session)
 
-            return jsonify({
-                "status": "success",
-                "message": "Transformación exitosa",
-                "type": "update",
-                "executed_code": code,
-                "explanation": explanation,
-                "data": data,
-                "chart_data": updated_chart_data,
-                "has_chart": has_chart
-            }), 200
+            columns = current_df.columns.tolist()
+            sample_data = None
+            if not current_df.empty:
+                sample_data = current_df.iloc[0].where(pd.notnull(current_df.iloc[0]), None).to_dict()
 
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        import traceback
-        return jsonify({"error": f"Error interno: {str(e)}", "trace": traceback.format_exc()}), 500
+            # Generate transformation code from LLM
+            code_data = LLMService.generate_transformation_code(prompt, columns, sample_data)
+
+            if isinstance(code_data, dict):
+                code = code_data['code']
+                explanation = code_data['explanation']
+                intent = code_data.get('intent', 'DATA_MUTATION')
+            else:
+                code, explanation = code_data
+                intent = 'DATA_MUTATION'
+
+            yield format_sse(json.dumps({"step": "Ejecutando..."}), event="progress")
+
+            if intent == 'FORMULA_WRITE':
+                # Parse the JSON list of formula instructions from the code field
+                formula_instructions = json.loads(code)
+                CodeExecutionService.apply_formula_write(file_path, formula_instructions)
+                StateManager.add_command(
+                    session_id, prompt,
+                    code,  # store raw JSON instructions as code
+                    explanation,
+                    intent_type='FORMULA_WRITE'
+                )
+                # Re-read file keeping formula strings (data_only=False)
+                updated_df = pd.read_excel(file_path, sheet_name=0, engine='openpyxl')
+                data = ExcelService.format_dataframe_response(updated_df)
+                yield format_sse(json.dumps({
+                    "step": "Listo",
+                    "type": "formula",
+                    "data": data,
+                    "explanation": explanation,
+                    "chart_data": None,
+                    "has_chart": False
+                }), event="done")
+
+            elif intent == 'VISUAL_UPDATE':
+                chart_json = CodeExecutionService.execute_chart_generation(current_df, code)
+                StateManager.add_command(
+                    session_id, prompt,
+                    "pass",
+                    explanation,
+                    chart_code=code,
+                    intent_type='VISUAL_UPDATE'
+                )
+                yield format_sse(json.dumps({
+                    "step": "Listo",
+                    "type": "chart",
+                    "data": None,
+                    "explanation": explanation,
+                    "chart_data": json.loads(chart_json),
+                    "has_chart": True
+                }), event="done")
+
+            else:
+                # DATA_MUTATION — pre-exec validate, execute, store
+                for pattern in ['import ', 'open(', 'os.', 'sys.', 'subprocess.', '__class__', '__subclasses__']:
+                    if pattern in code:
+                        raise ValueError(f"Forbidden pattern in generated code: {pattern!r}")
+
+                StateManager.add_command(
+                    session_id, prompt,
+                    code,
+                    explanation,
+                    intent_type='DATA_MUTATION'
+                )
+                modified_df = CodeExecutionService.execute_transformation(current_df, code)
+                data = ExcelService.format_dataframe_response(modified_df)
+
+                # Reactive chart update if one is active
+                updated_chart_data = None
+                has_chart = False
+                chart_code = StateManager.get_active_chart_code(session_id)
+                if chart_code:
+                    try:
+                        chart_json = CodeExecutionService.execute_chart_generation(modified_df, chart_code)
+                        updated_chart_data = json.loads(chart_json)
+                        has_chart = True
+                    except Exception as chart_err:
+                        print(f"Reactive chart update failed: {chart_err}")
+
+                yield format_sse(json.dumps({
+                    "step": "Listo",
+                    "type": "update",
+                    "data": data,
+                    "explanation": explanation,
+                    "chart_data": updated_chart_data,
+                    "has_chart": has_chart
+                }), event="done")
+
+        except Exception as e:
+            print(f"[TRANSFORM ERROR] prompt={prompt!r} error={e}")
+            yield format_sse(json.dumps({"error": "No pude aplicar ese cambio. Intenta ser más específico."}), event="error")
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'
+        }
+    )
 
 
 @excel_bp.post('/undo')
@@ -163,12 +202,12 @@ def undo_excel():
 
     try:
         StateManager.undo_last_command(session_id)
-        
+
         session = StateManager.get_session(session_id, current_user_id)
         current_df = _replay_session(session)
-        
+
         data = ExcelService.format_dataframe_response(current_df)
-        
+
         return jsonify({
             "status": "success",
             "message": "Deshacer exitoso",
@@ -190,12 +229,12 @@ def reset_excel():
 
     try:
         StateManager.clear_commands(session_id)
-        
+
         session = StateManager.get_session(session_id, current_user_id)
         original_df = session['initial_df']
-        
+
         data = ExcelService.format_dataframe_response(original_df)
-        
+
         return jsonify({
             "status": "success",
             "message": "Reinicio exitoso",
@@ -228,11 +267,11 @@ def get_conversation_state(session_id):
     try:
         # 1. Get Session
         session_data = StateManager.get_session(session_id, current_user_id)
-        
+
         # 2. Replay to get current Grid
         current_df = _replay_session(session_data)
-        grid_data = ExcelService.format_dataframe_response(current_df) # Limit to 10/15 rows for preview
-        
+        grid_data = ExcelService.format_dataframe_response(current_df)
+
         # 3. Get Active Chart (Persistence)
         chart_data = None
         has_chart = False
@@ -244,8 +283,8 @@ def get_conversation_state(session_id):
                 has_chart = True
             except:
                 pass
-        
-        # 3. Format Messages
+
+        # 4. Format Messages
         formatted_messages = []
         for cmd in session_data['commands']:
             # User Message
@@ -255,14 +294,14 @@ def get_conversation_state(session_id):
                 "content": cmd.prompt,
                 "timestamp": cmd.created_at.isoformat()
             })
-            
+
             # Assistant Message
             formatted_messages.append({
                 "id": f"msg_asst_{cmd.id}",
                 "role": "assistant",
                 "content": cmd.explanation or "Transformation applied.",
                 "executed_code": cmd.generated_code,
-                "timestamp": cmd.created_at.isoformat() 
+                "timestamp": cmd.created_at.isoformat()
             })
 
         return jsonify({
@@ -301,13 +340,26 @@ def delete_conversation(session_id):
         return jsonify({"error": str(e)}), 500
 
 
-
-
 def _replay_session(session):
-    """Helper to replay all commands from initial_df"""
+    """Helper to replay all commands from initial_df, routing by intent_type."""
     df = session['initial_df'].copy()
+    file_path = session['conversation'].file_path
+
     for cmd in session['commands']:
-        # Support both object (new way) or dict/string if legacy
+        intent = getattr(cmd, 'intent_type', 'DATA_MUTATION') or 'DATA_MUTATION'
         code = cmd.generated_code if hasattr(cmd, 'generated_code') else cmd
-        df = CodeExecutionService.execute_transformation(df, code)
+
+        if intent == 'FORMULA_WRITE':
+            # Apply formula to disk; do not update in-memory df
+            # (formula_instructions stored as JSON string in generated_code)
+            try:
+                formula_instructions = json.loads(code)
+                CodeExecutionService.apply_formula_write(file_path, formula_instructions)
+            except Exception as e:
+                print(f"[_replay_session] FORMULA_WRITE failed for cmd {getattr(cmd, 'id', '?')}: {e}")
+        else:
+            # DATA_MUTATION or VISUAL_UPDATE — execute against df
+            if code and code != 'pass':
+                df = CodeExecutionService.execute_transformation(df, code)
+
     return df

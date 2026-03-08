@@ -4,11 +4,13 @@ Tests for EDIT-03 and CHAT-02: SSE /excel/transform endpoint.
 These tests mock the LLM so no real API calls are made.
 """
 import json
+import io
 import pytest
+import openpyxl
 from unittest.mock import patch
 
 
-def _parse_sse_frames(raw: bytes) -> list[dict]:
+def _parse_sse_frames(raw: bytes) -> list:
     """Parse SSE byte stream into a list of {'event': str, 'data': dict}."""
     text = raw.decode('utf-8')
     frames = []
@@ -29,7 +31,7 @@ def _parse_sse_frames(raw: bytes) -> list[dict]:
 
 
 def _make_authenticated_client(client):
-    """Register + login a test user and return (client, token)."""
+    """Register + login a test user and return token."""
     client.post('/auth/register', json={'email': 'ssetest@example.com', 'password': 'Password1!'})
     resp = client.post('/auth/login', json={'email': 'ssetest@example.com', 'password': 'Password1!'})
     data = resp.get_json()
@@ -39,8 +41,6 @@ def _make_authenticated_client(client):
 
 def _upload_test_xlsx(client, token):
     """Upload a minimal .xlsx and return session_id."""
-    import io
-    import openpyxl
     wb = openpyxl.Workbook()
     ws = wb.active
     ws['A1'] = 'Name'
@@ -61,6 +61,33 @@ def _upload_test_xlsx(client, token):
     return resp.get_json()['session_id']
 
 
+def _post_transform_with_mock(client, token, session_id, prompt, mock_return):
+    """
+    POST to /excel/transform with LLMService mocked for the entire lifecycle
+    including lazy stream consumption.
+
+    Flask's test client for streaming responses evaluates the generator lazily
+    when resp.data is first accessed. The mock must remain active through that
+    access, so patcher.stop() is called only after resp.data is consumed.
+    """
+    patcher = patch(
+        'app.routes.excel.LLMService.generate_transformation_code',
+        return_value=mock_return
+    )
+    patcher.start()
+    try:
+        resp = client.post(
+            '/excel/transform',
+            data={'session_id': str(session_id), 'prompt': prompt},
+            headers={'Authorization': f'Bearer {token}'},
+        )
+        # Force full stream consumption while mock is still active
+        raw_data = resp.data
+    finally:
+        patcher.stop()
+    return resp, raw_data
+
+
 def test_transform_sse_events(client):
     """POST /excel/transform yields SSE events: progress(Interpretando), progress(Ejecutando), done."""
     token = _make_authenticated_client(client)
@@ -72,17 +99,12 @@ def test_transform_sse_events(client):
         'intent': 'DATA_MUTATION'
     }
 
-    with patch('app.services.llm_service.LLMService.generate_transformation_code', return_value=mock_code_data):
-        resp = client.post(
-            '/excel/transform',
-            data={'session_id': str(session_id), 'prompt': 'double all values'},
-            headers={'Authorization': f'Bearer {token}'},
-        )
+    resp, raw_data = _post_transform_with_mock(client, token, session_id, 'double all values', mock_code_data)
 
     assert resp.status_code == 200
     assert 'text/event-stream' in resp.content_type
 
-    frames = _parse_sse_frames(resp.data)
+    frames = _parse_sse_frames(raw_data)
     events = [f['event'] for f in frames]
 
     assert 'progress' in events, f"No 'progress' events found. Events: {events}"
@@ -105,15 +127,10 @@ def test_explanation_in_done_event(client):
         'intent': 'DATA_MUTATION'
     }
 
-    with patch('app.services.llm_service.LLMService.generate_transformation_code', return_value=mock_code_data):
-        resp = client.post(
-            '/excel/transform',
-            data={'session_id': str(session_id), 'prompt': 'increment values'},
-            headers={'Authorization': f'Bearer {token}'},
-        )
+    resp, raw_data = _post_transform_with_mock(client, token, session_id, 'increment values', mock_code_data)
 
     assert resp.status_code == 200
-    frames = _parse_sse_frames(resp.data)
+    frames = _parse_sse_frames(raw_data)
     done_frames = [f for f in frames if f['event'] == 'done']
     assert len(done_frames) == 1, f"Expected exactly one done event, got: {done_frames}"
 
