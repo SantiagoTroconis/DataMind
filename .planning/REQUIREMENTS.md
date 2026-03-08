@@ -34,7 +34,7 @@
 ### AI Chat
 
 - [x] **CHAT-01**: El sistema soporta múltiples modelos de IA (Claude y GPT-4 como mínimo) de forma intercambiable vía LiteLLM
-- [ ] **CHAT-02**: Tras cada cambio, la IA explica en lenguaje natural qué modificó y por qué
+- [x] **CHAT-02**: Tras cada cambio, la IA explica en lenguaje natural qué modificó y por qué
 - [ ] **CHAT-03**: El usuario puede deshacer el último cambio aplicado (undo)
 - [ ] **CHAT-04**: El historial del chat se preserva en la sesión y es visible al volver a la conversación
 
@@ -90,7 +90,7 @@
 | EDIT-03 | Phase 2 | Pending |
 | EDIT-04 | Phase 2 | Pending |
 | CHAT-01 | Phase 2 | Complete |
-| CHAT-02 | Phase 2 | Pending |
+| CHAT-02 | Phase 2 | Complete |
 | FILE-02 | Phase 3 | Pending |
 | AUTH-03 | Phase 3 | Pending |
 | CHAT-03 | Phase 3 | Pending |
