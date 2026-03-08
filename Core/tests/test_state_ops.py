@@ -214,19 +214,117 @@ def test_conversation_access_denied(client):
 
 
 # ---------------------------------------------------------------------------
-# FILE-02: TTL cleanup stubs (requires expires_at column + jobs.py — plan 03)
+# FILE-02: TTL cleanup (expires_at column + jobs.py — plan 03)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skip(reason="FILE-02: requires expires_at column + jobs.py — added in plan 03")
-def test_ttl_cleanup_removes_file(client):
-    pass
+def test_ttl_cleanup_removes_file(app):
+    """FILE-02: cleanup_expired_files removes disk file + deactivates record when expires_at has passed."""
+    import tempfile
+    from datetime import datetime, timedelta
+    from config.database import SessionLocal
+    from app.models.conversation import Conversation
+    from app.jobs import cleanup_expired_files
+
+    # Create a real temp file to simulate an uploaded Excel
+    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+        temp_path = f.name
+
+    db = SessionLocal()
+    try:
+        conv = Conversation(
+            user_id=999,  # Fake user ID — no FK constraint in SQLite with test schema
+            file_path=temp_path,
+            filename='expired.xlsx',
+            expires_at=datetime.utcnow() - timedelta(seconds=1)  # Already expired
+        )
+        db.add(conv)
+        db.commit()
+        conv_id = conv.id
+    finally:
+        db.close()
+
+    cleanup_expired_files()
+
+    db = SessionLocal()
+    try:
+        refreshed = db.query(Conversation).filter_by(id=conv_id).first()
+        assert refreshed.is_active is False, "Conversation should be deactivated"
+        assert not os.path.exists(temp_path), "File should be removed from disk"
+    finally:
+        db.close()
+        # Cleanup in case test fails
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
-@pytest.mark.skip(reason="FILE-02: requires expires_at column + jobs.py — added in plan 03")
-def test_ttl_cleanup_skips_fresh(client):
-    pass
+def test_ttl_cleanup_skips_fresh(app):
+    """FILE-02: cleanup_expired_files does not touch conversations with future expires_at."""
+    import tempfile
+    from datetime import datetime, timedelta
+    from config.database import SessionLocal
+    from app.models.conversation import Conversation
+    from app.jobs import cleanup_expired_files
+
+    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+        temp_path = f.name
+
+    db = SessionLocal()
+    try:
+        conv = Conversation(
+            user_id=998,
+            file_path=temp_path,
+            filename='fresh.xlsx',
+            expires_at=datetime.utcnow() + timedelta(days=7)  # Future
+        )
+        db.add(conv)
+        db.commit()
+        conv_id = conv.id
+    finally:
+        db.close()
+
+    cleanup_expired_files()
+
+    db = SessionLocal()
+    try:
+        refreshed = db.query(Conversation).filter_by(id=conv_id).first()
+        assert refreshed.is_active is True, "Fresh conversation must remain active"
+        assert os.path.exists(temp_path), "Fresh file must not be deleted"
+    finally:
+        db.close()
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
-@pytest.mark.skip(reason="FILE-02: requires expires_at column + jobs.py — added in plan 03")
-def test_ttl_cleanup_missing_file(client):
-    pass
+def test_ttl_cleanup_missing_file(app):
+    """FILE-02: cleanup_expired_files does not crash when file_path does not exist on disk."""
+    import tempfile
+    from datetime import datetime, timedelta
+    from config.database import SessionLocal
+    from app.models.conversation import Conversation
+    from app.jobs import cleanup_expired_files
+
+    ghost_path = os.path.join(tempfile.gettempdir(), 'does_not_exist_datamind_9999.xlsx')
+
+    db = SessionLocal()
+    try:
+        conv = Conversation(
+            user_id=997,
+            file_path=ghost_path,
+            filename='ghost.xlsx',
+            expires_at=datetime.utcnow() - timedelta(seconds=1)
+        )
+        db.add(conv)
+        db.commit()
+        conv_id = conv.id
+    finally:
+        db.close()
+
+    # Must not raise
+    cleanup_expired_files()
+
+    db = SessionLocal()
+    try:
+        refreshed = db.query(Conversation).filter_by(id=conv_id).first()
+        assert refreshed.is_active is False, "Record should be deactivated even when file is missing"
+    finally:
+        db.close()
