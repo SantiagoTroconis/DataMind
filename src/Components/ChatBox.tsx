@@ -97,65 +97,78 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
         setAppState?.('result');
 
         try {
-            const formData = new FormData();
-
-            formData.append('prompt', contentToSend);
-            if (file) {
-                formData.append('file', file);
-            }
-
-            if (sessionId) {
-                formData.append('session_id', sessionId);
-            }
-
             const response = await fetch('http://localhost:5000/excel/transform', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: formData,
+                body: new URLSearchParams({
+                    ...(sessionId ? { session_id: sessionId } : {}),
+                    prompt: contentToSend,
+                }),
             });
 
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                toast.error('Error al conectar con el servidor');
+                setAppState?.('view');
+                return;
             }
 
-            const textResponse = await response.text();
-            const sanitizedResponse = textResponse.replace(/:\s*NaN/g, ': null');
-            const data = JSON.parse(sanitizedResponse);
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
 
+                const frames = buffer.split('\n\n');
+                buffer = frames.pop() || '';
 
-            if (data.status === 'success') {
-                
-                if (data.type === 'chart' && onChartGenerated) {
-                    onChartGenerated(data.chart_data);
-                } else if (data.type === 'update' && onUpdateGrid) {
-                    onUpdateGrid(data.data);
+                for (const frame of frames) {
+                    const lines = frame.split('\n');
+                    const dataLine = lines.find(l => l.startsWith('data:'));
+                    const eventLine = lines.find(l => l.startsWith('event:'));
+                    if (!dataLine) continue;
 
-                    if(data.has_chart && onChartGenerated) {
-                        onChartGenerated(data.chart_data);
-                    } else {
-                        toast.info('Data updated, chart not updated.');
-                    }
+                    const payload = JSON.parse(dataLine.slice(5).trim());
+                    const eventType = eventLine ? eventLine.slice(6).trim() : 'message';
 
-                    if (onUpdateFile) {
-                        const newFile = generateCsvFile(data.data.columns, data.data.rows);
-                        onUpdateFile(newFile);
+                    if (eventType === 'progress') {
+                        // Update loading status message shown in the processing overlay
+                        setAppState?.('result');
+                    } else if (eventType === 'done') {
+                        // Update grid with payload.data
+                        if ((payload.type === 'update' || payload.type === 'formula') && onUpdateGrid && payload.data) {
+                            onUpdateGrid(payload.data);
+                            if (onUpdateFile) {
+                                const newFile = generateCsvFile(payload.data.columns, payload.data.rows);
+                                onUpdateFile(newFile);
+                            }
+                        }
+                        // Update chart if present
+                        if (payload.has_chart && payload.chart_data && onChartGenerated) {
+                            onChartGenerated(payload.chart_data);
+                        }
+                        // Add AI explanation as assistant message
+                        if (payload.explanation) {
+                            const assistantMsg: Message = {
+                                id: (Date.now() + 1).toString(),
+                                role: 'assistant',
+                                content: payload.explanation,
+                                timestamp: new Date(),
+                            };
+                            setMessages(prev => [...prev, assistantMsg]);
+                        }
+                    } else if (eventType === 'error') {
+                        toast.error(payload.error || 'Error al procesar el cambio');
                     }
                 }
-
-                // Add success message
-                const assistantMsg: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'assistant',
-                    content: data.explanation,
-                    timestamp: new Date(),
-                    executed_code: data.executed_code
-                };
-                setMessages(prev => [...prev, assistantMsg]);
             }
-            // Restore view state
+
+            // Restore view state after stream ends
             setAppState?.('view');
             onOpenChange?.(true);
             setPrompt('');
@@ -170,7 +183,7 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
             };
             setMessages(prev => [...prev, errorMsg]);
             setAppState?.('view');
-            setPrompt('')
+            setPrompt('');
         }
     }
 
