@@ -10,6 +10,7 @@ class Command(Base):
     chart_generated_code = Column(Text, nullable=True)
     generated_code = Column(Text, nullable=False)
     explanation = Column(Text, nullable=True)
+    intent_type = Column(String(20), nullable=False, default='DATA_MUTATION')
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(), default=datetime.utcnow, nullable=False)
 
