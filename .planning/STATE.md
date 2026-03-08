@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-state-operations 03-02-PLAN.md
-last_updated: "2026-03-08T22:17:00.303Z"
+stopped_at: Completed 03-state-operations 03-03-PLAN.md
+last_updated: "2026-03-08T22:29:37.826Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-ai-pipeline P03 | 45 | 2 tasks | 7 files |
 | Phase 03-state-operations P01 | 23 | 2 tasks | 3 files |
 | Phase 03-state-operations P02 | 4 | 2 tasks | 0 files |
+| Phase 03-state-operations P03 | 15 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 03-state-operations]: Chart re-execution on undo uses same try/except pattern as get_conversation_state — silent failure prints warning, does not break undo
 - [Phase 03-state-operations]: FILE-02 test stubs use @pytest.mark.skip not xfail — consistent with Phase 02 convention for known-missing production code
 - [Phase 03-state-operations]: No production code changes required — all 3 session/conversation tests passed without modification; GET /excel/conversations, GET /excel/conversation/<id>, and 403 ValueError path were all already correct
+- [Phase 03-state-operations]: APScheduler _scheduler instantiated at module level outside create_app(); started inside only when not app.testing and WERKZEUG_RUN_MAIN guard passes
+- [Phase 03-state-operations]: cleanup_expired_files uses lazy imports inside function body to avoid circular imports at module load time; TTL_DAYS=7 constant in state_manager.py
+- [Phase 03-state-operations]: FILE-02 TTL tests use app fixture with direct DB insert (fake user_id) and cross-platform ghost path via os.path.join(tempfile.gettempdir(),...)
 
 ### Pending Todos
 
@@ -105,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T22:17:00.300Z
-Stopped at: Completed 03-state-operations 03-02-PLAN.md
+Last session: 2026-03-08T22:29:37.823Z
+Stopped at: Completed 03-state-operations 03-03-PLAN.md
 Resume file: None

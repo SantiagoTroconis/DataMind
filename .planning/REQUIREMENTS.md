@@ -20,7 +20,7 @@
 ### File Management
 
 - [x] **FILE-01**: El usuario puede subir un archivo .xlsx o .xls desde su computadora
-- [ ] **FILE-02**: El archivo subido tiene un TTL definido; se elimina automáticamente al expirar (disco + registro DB)
+- [x] **FILE-02**: El archivo subido tiene un TTL definido; se elimina automáticamente al expirar (disco + registro DB)
 - [ ] **FILE-03**: El usuario puede descargar el archivo .xlsx con todos los cambios aplicados
 - [ ] **FILE-04**: Se muestra un botón de descarga claro después de cada modificación
 
@@ -91,7 +91,7 @@
 | EDIT-04 | Phase 2 | Complete |
 | CHAT-01 | Phase 2 | Complete |
 | CHAT-02 | Phase 2 | Complete |
-| FILE-02 | Phase 3 | Pending |
+| FILE-02 | Phase 3 | Complete |
 | AUTH-03 | Phase 3 | Complete |
 | CHAT-03 | Phase 3 | Complete |
 | CHAT-04 | Phase 3 | Complete |
