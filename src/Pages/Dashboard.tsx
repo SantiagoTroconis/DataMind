@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search, RefreshCcw } from 'lucide-react';
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
@@ -53,6 +53,7 @@ function Dashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [loadingStep, setLoadingStep] = useState('');
 
   const findColumnByValues = (arr: unknown[] | undefined, grid: { columns: string[]; rows: Record<string, unknown>[] } | null) => {
     if (!arr || !grid) return null;
@@ -302,6 +303,11 @@ function Dashboard() {
       const data = await response.json();
       if (data.status === 'success' && data.data) {
         setGridData(data.data);
+        if (!data.has_chart) {
+          setChartData(null);
+        } else if (data.chart_data) {
+          setChartData(data.chart_data);
+        }
       }
     } catch (error) {
       console.error('Error undoing:', error);
@@ -504,7 +510,7 @@ function Dashboard() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+      <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
         <div className="px-8 py-6 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-4">
             {!sidebarOpen && (
@@ -666,6 +672,7 @@ function Dashboard() {
                 onOpenChange={setChatOpen}
                 appState={appState}
                 setAppState={setAppState}
+                onLoadingStep={setLoadingStep}
                 file={currentFile}
                 onUpdateFile={setCurrentFile}
                 onUpdateGrid={setGridData}
@@ -679,15 +686,23 @@ function Dashboard() {
 
 
           {appState === 'result' && (
-            <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-6 shadow-xl border border-slate-200 max-w-sm w-full mx-4">
-                <div className="relative">
-                  <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-[2px]">
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
                 </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">Processing Data</h3>
-                </div>
+                <p
+                  key={loadingStep}
+                  className="text-sm font-medium text-slate-500 animate-pulse tracking-wide"
+                >
+                  {loadingStep || 'Cargando...'}
+                </p>
               </div>
             </div>
           )}
