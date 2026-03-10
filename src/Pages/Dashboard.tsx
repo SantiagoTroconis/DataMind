@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search, RefreshCcw } from 'lucide-react';
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
@@ -36,8 +36,8 @@ function Dashboard() {
   const [gridData, setGridData] = useState<{ columns: string[], rows: Record<string, unknown>[] } | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [chartData, setChartData] = useState<{ data: Data[]; layout: Record<string, unknown> } | null>(null);
+  const [hasModifications, setHasModifications] = useState(false);
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -77,44 +77,17 @@ function Dashboard() {
     )
     : gridData ? gridData.rows : [];
 
-  const generateCsvFile = (columns: string[], rows: Record<string, unknown>[], filename: string): File => {
-    const processValue = (val: unknown) => {
-      if (val === null || val === undefined) return '';
-      return `"${String(val).replace(/"/g, '""')}"`;
-    };
-
-    const header = columns.map(c => processValue(c)).join(',');
-    const body = rows.map(row =>
-      columns.map(col => processValue(row[col])).join(',')
-    ).join('\n');
-
-    const BOM = '\uFEFF';
-    const content = `${BOM}${header}\n${body}`;
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    return new File([blob], filename || 'export.csv', { type: 'text/csv' });
-  };
-
   useEffect(() => {
-    const fetchConversations = async (authToken: string | null) => {
+    const fetchConversations = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://localhost:5000/excel/conversations', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        });
+        const response = await apiFetch('/excel/conversations');
         const data = await response.json();
 
         if (Array.isArray(data.conversations)) {
           setConversations(data.conversations);
         } else {
           setConversations([]);
-        }
-
-        if (data.msg === 'Token has expired') {
-          localStorage.removeItem('user');
-          localStorage.removeItem('token');
-          navigate('/auth');
         }
 
       } catch (error) {
@@ -131,10 +104,8 @@ function Dashboard() {
       navigate('/auth');
     }
 
-
     setUser(user);
-    setToken(token);
-    fetchConversations(token);
+    fetchConversations();
   }, [navigate]);
 
 
@@ -204,11 +175,7 @@ function Dashboard() {
 
 
       setAppState('result');
-      const response = await fetch(`http://localhost:5000/excel/conversation/${conversation.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(`/excel/conversation/${conversation.id}`);
 
       if (!response.ok) {
         throw new Error('Failed to load conversation');
@@ -219,9 +186,7 @@ function Dashboard() {
       if (data.status === 'success' && data.data) {
         if (data.data.grid) {
           setGridData(data.data.grid);
-          // Regenerate file for export
-          const reconstructedFile = generateCsvFile(data.data.grid.columns, data.data.grid.rows, conversation.filename);
-          setCurrentFile(reconstructedFile);
+          setHasModifications(true);
         }
 
         if (data.data.chart_data) {
@@ -259,18 +224,27 @@ function Dashboard() {
     }
   };
 
-  const handleExport = () => {
-    if (!currentFile) return;
-
-    const url = URL.createObjectURL(currentFile);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = currentFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    if (!sessionId) return;
+    try {
+      const response = await apiFetch(`/excel/download/${sessionId}`);
+      if (!response.ok) {
+        toast.error('Download failed');
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName.replace(/\.[^.]+$/, '.xlsx');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Download failed');
+    }
   };
 
   const handleLogout = () => {
@@ -287,11 +261,8 @@ function Dashboard() {
       const formData = new FormData();
       formData.append('session_id', sessionId);
 
-      const response = await fetch(`http://localhost:5000/excel/undo`, {
+      const response = await apiFetch('/excel/undo', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -329,11 +300,8 @@ function Dashboard() {
             const formData = new FormData();
             formData.append('session_id', sessionId);
 
-            const response = await fetch(`http://localhost:5000/excel/reset`, {
+            const response = await apiFetch('/excel/reset', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
               body: formData,
             });
 
@@ -374,11 +342,8 @@ function Dashboard() {
         onClick: async () => {
           setAppState('result');
           try {
-            const response = await fetch(`http://localhost:5000/excel/conversation/${conversationId}`, {
+            const response = await apiFetch(`/excel/conversation/${conversationId}`, {
               method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              }
             });
 
             if (!response.ok) {
@@ -422,6 +387,10 @@ function Dashboard() {
     });
   };
 
+  const handleGridUpdate = (data: { columns: string[], rows: Record<string, unknown>[] }) => {
+    setGridData(data);
+    setHasModifications(true);
+  };
 
 
 
@@ -542,8 +511,17 @@ function Dashboard() {
               </button>
             </div>
 
-            <button className="px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer rounded-lg transition font-medium text-sm border border-slate-200" onClick={handleExport}  >
-              Export
+            <button
+              className={`px-4 py-2 rounded-lg transition font-medium text-sm border border-slate-200 ${
+                hasModifications
+                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer'
+                  : 'text-slate-300 border-slate-100 cursor-not-allowed opacity-40'
+              }`}
+              onClick={hasModifications ? handleDownload : undefined}
+              disabled={!hasModifications}
+              title={hasModifications ? 'Download modified .xlsx' : 'Apply an AI change first'}
+            >
+              Download .xlsx
             </button>
             <button onClick={handleLogout} className="px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer rounded-lg transition font-medium text-sm border border-slate-200">
               <LogOut className="w-5 h-5" />
@@ -673,7 +651,7 @@ function Dashboard() {
                 onLoadingStep={setLoadingStep}
                 file={currentFile}
                 onUpdateFile={setCurrentFile}
-                onUpdateGrid={setGridData}
+                onUpdateGrid={handleGridUpdate}
                 messages={messages}
                 setMessages={setMessages}
                 onChartGenerated={setChartData}
