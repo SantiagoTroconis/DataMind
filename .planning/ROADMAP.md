@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Auth, JWT middleware, API key env vars, and file upload with conversation record creation (completed 2026-03-07)
 - [x] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM (completed 2026-03-08)
-- [x] **Phase 3: State Operations** - Undo, session resume, conversation history, and file TTL cleanup (completed 2026-03-08)
+- [x] **Phase 3: State Operations** - Undo, session resume, conversation history, and file TTL cleanup (completed 2026-03-08)
 - [ ] **Phase 4: Frontend Integration** - Excel preview, split layout, download button, and full UI loop
 
 ## Phase Details
@@ -77,12 +77,12 @@ Plans:
   2. The layout shows the chat panel and the Excel preview side by side simultaneously — no toggling between views
   3. After an AI change is applied, the grid updates to reflect the new values without a full page reload
   4. A clearly labeled download button appears after each AI modification, and clicking it delivers the updated .xlsx file to the user's computer
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: ExcelPreview component — SheetJS 0.18.5 client-side parsing into react-data-grid; merged cell assessment
-- [ ] 04-02: Split layout in Dashboard.tsx — chat panel + ExcelPreview side by side; SSE consumption from /transform; real-time grid update
-- [ ] 04-03: Download button + ConversationList UI + API base URL centralized in src/utils/api.ts + token expiry interceptor
+- [ ] 04-01-PLAN.md — ExcelPreview component (SheetJS 0.18.5 + react-data-grid wrapper, EDIT-01) + Wave 0 test stubs for download endpoint
+- [ ] 04-02-PLAN.md — Split layout in Dashboard.tsx: ExcelPreview wired, full-screen overlay replaced with inline loading bar, grid visible during transforms (EDIT-02)
+- [ ] 04-03-PLAN.md — Flask download endpoint + FILE-03 tests + Download .xlsx button + apiFetch migration for all bare fetch calls (FILE-03, FILE-04)
 
 ## Progress
 
