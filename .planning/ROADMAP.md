@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Auth, JWT middleware, API key env vars, and file upload with conversation record creation (completed 2026-03-07)
 - [x] **Phase 2: AI Pipeline** - LLM integration with security hardening, cell/formula transforms via exec, multi-model via LiteLLM (completed 2026-03-08)
 - [x] **Phase 3: State Operations** - Undo, session resume, conversation history, and file TTL cleanup (completed 2026-03-08)
-- [ ] **Phase 4: Frontend Integration** - Excel preview, split layout, download button, and full UI loop
+- [x] **Phase 4: Frontend Integration** - Excel preview, split layout, download button, and full UI loop (completed 2026-03-10)
 
 ## Phase Details
 
@@ -94,4 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 3/3 | Complete   | 2026-03-08 |
 | 2. AI Pipeline | 3/3 | Complete   | 2026-03-08 |
 | 3. State Operations | 3/3 | Complete   | 2026-03-08 |
-| 4. Frontend Integration | 2/3 | In Progress|  |
+| 4. Frontend Integration | 3/3 | Complete   | 2026-03-10 |

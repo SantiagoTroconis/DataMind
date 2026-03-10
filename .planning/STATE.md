@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-frontend-integration 04-02-PLAN.md
-last_updated: "2026-03-10T04:27:59.664Z"
+stopped_at: Checkpoint 04-03 — awaiting human-verify of Download .xlsx flow
+last_updated: "2026-03-10T04:41:42.095Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-frontend-integration P01 | 12 | 2 tasks | 2 files |
 | Phase 04-frontend-integration P02 | 2 | 2 tasks | 1 files |
 | Phase 04-frontend-integration P02 | 525612 | 3 tasks | 1 files |
+| Phase 04-frontend-integration P03 | 10 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Recent decisions affecting current work:
 - [Phase 04-frontend-integration]: DataGrid import removed from Dashboard.tsx — ExcelPreview encapsulates its own DataGrid; search filter stays in Dashboard and passed via gridData prop slice
 - [Phase 04-frontend-integration]: Grid condition expanded to include appState === 'result' — grid stays visible during transform/undo/load; inline slim loading bar replaces full-screen overlay (EDIT-02)
 - [Phase 04-frontend-integration]: Grid condition expanded to include appState === 'result' — grid stays visible during transform/undo/load; inline slim loading bar replaces full-screen overlay (EDIT-02)
+- [Phase 04-frontend-integration]: Download button enabled on conversation load (handleFileSelect) — prior modifications already exist for loaded sessions
+- [Phase 04-frontend-integration]: token state variable removed from Dashboard.tsx — apiFetch reads from localStorage internally, no component-level token needed
+- [Phase 04-frontend-integration]: generateCsvFile and handleExport removed — xlsx download via backend replaces CSV client-side export
 
 ### Pending Todos
 
@@ -120,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:27:59.661Z
-Stopped at: Completed 04-frontend-integration 04-02-PLAN.md
+Last session: 2026-03-10T04:41:42.091Z
+Stopped at: Checkpoint 04-03 — awaiting human-verify of Download .xlsx flow
 Resume file: None

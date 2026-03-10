@@ -21,8 +21,8 @@
 
 - [x] **FILE-01**: El usuario puede subir un archivo .xlsx o .xls desde su computadora
 - [x] **FILE-02**: El archivo subido tiene un TTL definido; se elimina automáticamente al expirar (disco + registro DB)
-- [ ] **FILE-03**: El usuario puede descargar el archivo .xlsx con todos los cambios aplicados
-- [ ] **FILE-04**: Se muestra un botón de descarga claro después de cada modificación
+- [x] **FILE-03**: El usuario puede descargar el archivo .xlsx con todos los cambios aplicados
+- [x] **FILE-04**: Se muestra un botón de descarga claro después de cada modificación
 
 ### Excel Editor
 
@@ -99,8 +99,8 @@
 | SESS-02 | Phase 3 | Complete |
 | EDIT-01 | Phase 4 | Complete |
 | EDIT-02 | Phase 4 | Complete |
-| FILE-03 | Phase 4 | Pending |
-| FILE-04 | Phase 4 | Pending |
+| FILE-03 | Phase 4 | Complete |
+| FILE-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
