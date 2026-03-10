@@ -27,7 +27,7 @@
 ### Excel Editor
 
 - [x] **EDIT-01**: El contenido del archivo Excel se renderiza en pantalla como una vista de hoja (filas, columnas, celdas)
-- [ ] **EDIT-02**: El layout muestra el chat a un lado y la vista del Excel al otro (split layout)
+- [x] **EDIT-02**: El layout muestra el chat a un lado y la vista del Excel al otro (split layout)
 - [x] **EDIT-03**: El usuario puede pedir por chat cambios en valores de celdas y estos se reflejan en la vista en tiempo real
 - [x] **EDIT-04**: El usuario puede pedir por chat crear o modificar fórmulas (SUM, IF, VLOOKUP, etc.) y estas se aplican correctamente al archivo
 
@@ -98,7 +98,7 @@
 | SESS-01 | Phase 3 | Complete |
 | SESS-02 | Phase 3 | Complete |
 | EDIT-01 | Phase 4 | Complete |
-| EDIT-02 | Phase 4 | Pending |
+| EDIT-02 | Phase 4 | Complete |
 | FILE-03 | Phase 4 | Pending |
 | FILE-04 | Phase 4 | Pending |
 

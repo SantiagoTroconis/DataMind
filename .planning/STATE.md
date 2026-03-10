@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-frontend-integration 04-01-PLAN.md
-last_updated: "2026-03-10T04:14:17.397Z"
+stopped_at: "Completed 04-frontend-integration 04-02-PLAN.md (awaiting checkpoint:human-verify)"
+last_updated: "2026-03-10T04:17:43.092Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-state-operations P03 | 15 | 3 tasks | 5 files |
 | Phase 03-state-operations P04 | 1 | 1 tasks | 1 files |
 | Phase 04-frontend-integration P01 | 12 | 2 tasks | 2 files |
+| Phase 04-frontend-integration P02 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 04-frontend-integration]: ExcelPreview uses gridData as authoritative source when non-null; File prop parsed only when gridData is absent
 - [Phase 04-frontend-integration]: Merged cells ignored in ExcelPreview v1 — sheet_to_json flat values; react-data-grid beta has limited row-span support
 - [Phase 04-frontend-integration]: Search/filter excluded from ExcelPreview — responsibility stays in Dashboard.tsx wrapper
+- [Phase 04-frontend-integration]: DataGrid import removed from Dashboard.tsx — ExcelPreview encapsulates its own DataGrid; search filter stays in Dashboard and passed via gridData prop slice
+- [Phase 04-frontend-integration]: Grid condition expanded to include appState === 'result' — grid stays visible during transform/undo/load; inline slim loading bar replaces full-screen overlay (EDIT-02)
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:14:17.394Z
-Stopped at: Completed 04-frontend-integration 04-01-PLAN.md
+Last session: 2026-03-10T04:17:43.088Z
+Stopped at: Completed 04-frontend-integration 04-02-PLAN.md (awaiting checkpoint:human-verify)
 Resume file: None
