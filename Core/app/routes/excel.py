@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, Response, stream_with_context
+from flask import Blueprint, request, jsonify, Response, stream_with_context, send_file
+import io
 import json
 import pandas as pd
 import openpyxl
@@ -364,6 +365,34 @@ def delete_conversation(session_id):
         }), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@excel_bp.get('/download/<int:session_id>')
+@jwt_required()
+def download_excel(session_id):
+    current_user_id = get_jwt_identity()
+    try:
+        session_data = StateManager.get_session(session_id, current_user_id)
+        current_df = _replay_session(session_data)
+        filename = session_data['conversation'].filename
+        safe_name = filename if filename.lower().endswith('.xlsx') \
+                    else filename.rsplit('.', 1)[0] + '.xlsx'
+
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            current_df.to_excel(writer, index=False, sheet_name='Sheet1')
+        buf.seek(0)  # CRITICAL: reset cursor — without this, send_file sends 0 bytes
+
+        return send_file(
+            buf,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=safe_name,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 403
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
