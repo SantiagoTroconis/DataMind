@@ -2,9 +2,8 @@
 import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search, RefreshCcw } from 'lucide-react';
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
-import DataGrid from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
 import { ChartViewer } from '../Components/ChartViewer';
+import { ExcelPreview } from '../Components/ExcelPreview';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { apiFetch } from '../utils/api';
@@ -640,24 +639,12 @@ function Dashboard() {
                     </div>
 
                     <div className="flex-1 overflow-hidden relative">
-                      <DataGrid
-                        columns={gridData.columns.map(col => {
-                          const isLargeDataset = gridData.columns.length > 8;
-                          return {
-                            key: col,
-                            name: col,
-                            resizable: true,
-                            width: isLargeDataset ? 180 : `${100 / gridData.columns.length}%`,
-                            headerCellClass: 'bg-slate-50 text-slate-700 font-medium'
-                          };
-                        })}
-                        rows={filteredRows}
-                        className="rdg-light h-full border-0 text-sm"
-                        defaultColumnOptions={{
-                          sortable: true,
-                          resizable: true
-                        }}
-                        style={{ height: '100%' }}
+                      <ExcelPreview
+                        gridData={searchTerm
+                          ? { columns: gridData.columns, rows: filteredRows }
+                          : gridData
+                        }
+                        className="h-full"
                       />
                     </div>
                   </div>
