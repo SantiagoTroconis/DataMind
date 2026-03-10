@@ -117,6 +117,7 @@ function Dashboard() {
     setFileName(file.name);
     setCurrentFile(file);
     setIsUploading(true);
+    setHasModifications(false); // fresh upload — no AI transforms applied yet
 
     const formData = new FormData();
     formData.append('file', file);
@@ -186,7 +187,9 @@ function Dashboard() {
       if (data.status === 'success' && data.data) {
         if (data.data.grid) {
           setGridData(data.data.grid);
-          setHasModifications(true);
+          // Enable download only when the conversation actually has commands (messages come in pairs: user+assistant per command)
+          const hasCommands = Array.isArray(data.data.messages) && data.data.messages.length > 0;
+          setHasModifications(hasCommands);
         }
 
         if (data.data.chart_data) {
@@ -278,6 +281,10 @@ function Dashboard() {
         } else if (data.chart_data) {
           setChartData(data.chart_data);
         }
+        // undone: false means there were no commands to undo — we're at the original state
+        if (data.undone === false) {
+          setHasModifications(false);
+        }
       }
     } catch (error) {
       console.error('Error undoing:', error);
@@ -313,6 +320,7 @@ function Dashboard() {
             if (data.status === 'success' && data.data) {
               setGridData(data.data);
               setChartData(null);
+              setHasModifications(false); // all commands cleared — back to original state
               toast.success("File reset successfully");
             }
           } catch (error) {
@@ -353,6 +361,16 @@ function Dashboard() {
             const data = await response.json();
             if (data.status === 'success' && data.conversations) {
               setConversations(data.conversations);
+              // If the deleted conversation was the active one, clear view state
+              if (conversationId === sessionId) {
+                setGridData(null);
+                setChartData(null);
+                setSessionId(null);
+                sessionStorage.removeItem('current_session_id');
+                setActiveConversationId(null);
+                setHasModifications(false);
+                setAppState('landing');
+              }
               toast.success("File deleted successfully");
             }
           } catch (error) {
