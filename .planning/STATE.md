@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-state-operations 03-04-PLAN.md
-last_updated: "2026-03-09T00:23:59.147Z"
+stopped_at: Completed 04-frontend-integration 04-01-PLAN.md
+last_updated: "2026-03-10T04:14:17.397Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-state-operations P02 | 4 | 2 tasks | 0 files |
 | Phase 03-state-operations P03 | 15 | 3 tasks | 5 files |
 | Phase 03-state-operations P04 | 1 | 1 tasks | 1 files |
+| Phase 04-frontend-integration P01 | 12 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,9 @@ Recent decisions affecting current work:
 - [Phase 03-state-operations]: cleanup_expired_files uses lazy imports inside function body to avoid circular imports at module load time; TTL_DAYS=7 constant in state_manager.py
 - [Phase 03-state-operations]: FILE-02 TTL tests use app fixture with direct DB insert (fake user_id) and cross-platform ghost path via os.path.join(tempfile.gettempdir(),...)
 - [Phase 03-state-operations]: setChartData called inside handleUndo success block: null when !has_chart, data.chart_data when has_chart && chart_data present — matching undo backend contract
+- [Phase 04-frontend-integration]: ExcelPreview uses gridData as authoritative source when non-null; File prop parsed only when gridData is absent
+- [Phase 04-frontend-integration]: Merged cells ignored in ExcelPreview v1 — sheet_to_json flat values; react-data-grid beta has limited row-span support
+- [Phase 04-frontend-integration]: Search/filter excluded from ExcelPreview — responsibility stays in Dashboard.tsx wrapper
 
 ### Pending Todos
 
@@ -111,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T00:23:59.143Z
-Stopped at: Completed 03-state-operations 03-04-PLAN.md
+Last session: 2026-03-10T04:14:17.394Z
+Stopped at: Completed 04-frontend-integration 04-01-PLAN.md
 Resume file: None
