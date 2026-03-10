@@ -556,6 +556,17 @@ function Dashboard() {
         </div>
 
         <div className="flex-1 overflow-auto px-8 pb-8">
+          {(appState === 'result') && (
+            <div className="flex items-center gap-3 py-2 px-1 mb-2">
+              <div className="h-1 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 animate-pulse rounded-full w-1/2" />
+              </div>
+              <p className="text-xs font-medium text-slate-500 whitespace-nowrap">
+                {loadingStep || 'Procesando...'}
+              </p>
+            </div>
+          )}
+
           {appState === 'landing' && (
             <div className="h-full flex items-center justify-center">
               <div className="text-center max-w-2xl w-full">
@@ -598,7 +609,7 @@ function Dashboard() {
           )}
 
 
-          {appState === 'view' && gridData && (
+          {(appState === 'view' || appState === 'result') && gridData && (
             <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
               <div className="flex flex-col lg:flex-row gap-6 h-full">
 
@@ -685,27 +696,6 @@ function Dashboard() {
           )}
 
 
-          {appState === 'result' && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-[2px]">
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  {[0, 1, 2].map(i => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </div>
-                <p
-                  key={loadingStep}
-                  className="text-sm font-medium text-slate-500 animate-pulse tracking-wide"
-                >
-                  {loadingStep || 'Cargando...'}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Initial Loading State */}
           {
