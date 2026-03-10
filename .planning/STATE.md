@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Checkpoint 04-03 — awaiting human-verify of Download .xlsx flow
-last_updated: "2026-03-10T04:41:42.095Z"
+stopped_at: Completed 04-frontend-integration-03-PLAN.md
+last_updated: "2026-03-10T04:52:13.890Z"
 last_activity: 2026-03-06 — Roadmap created; all 20 v1 requirements mapped to 4 phases
 progress:
   total_phases: 4
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-frontend-integration P02 | 2 | 2 tasks | 1 files |
 | Phase 04-frontend-integration P02 | 525612 | 3 tasks | 1 files |
 | Phase 04-frontend-integration P03 | 10 | 2 tasks | 3 files |
+| Phase 04-frontend-integration P03 | 45 | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 04-frontend-integration]: Download button enabled on conversation load (handleFileSelect) — prior modifications already exist for loaded sessions
 - [Phase 04-frontend-integration]: token state variable removed from Dashboard.tsx — apiFetch reads from localStorage internally, no component-level token needed
 - [Phase 04-frontend-integration]: generateCsvFile and handleExport removed — xlsx download via backend replaces CSV client-side export
+- [Phase 04-frontend-integration]: hasModifications set based on message count when loading conversation — fresh sessions with zero commands keep button disabled
+- [Phase 04-frontend-integration]: handleDelete clears grid/session/chart state and resets to landing when active conversation deleted
+- [Phase 04-frontend-integration]: handleUndo sets hasModifications=false only when undone===false (no-op undo, already at original state)
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-10T04:41:42.091Z
-Stopped at: Checkpoint 04-03 — awaiting human-verify of Download .xlsx flow
+Last session: 2026-03-10T04:52:13.886Z
+Stopped at: Completed 04-frontend-integration-03-PLAN.md
 Resume file: None
