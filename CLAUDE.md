@@ -1,0 +1,2 @@
+After any correction from me, add an entry to .planning/lessons.md. Format: [date] | what went wrong | rule to follow next time. 
+Read .planning/lessons.md  and .planning/codebase/ (for more context about the project) at the start of every session and apply every rule before touching any code.

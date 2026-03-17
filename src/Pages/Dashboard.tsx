@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight, Undo, LogOut, Trash, Search, RefreshCcw } from 'lucide-react';
+import {
+  Upload, FileSpreadsheet, Sparkles, ChevronLeft, ChevronRight,
+  Undo, LogOut, Trash, Search,
+} from 'lucide-react';
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
 import { ChartViewer } from '../Components/ChartViewer';
@@ -27,6 +30,20 @@ export interface Conversation {
   messages: Message[];
 }
 
+// ─── tiny hover helper (avoids repetitive onMouseEnter/Leave pairs) ──────────
+function useHover(
+  normalStyle: React.CSSProperties,
+  hoverStyle: React.CSSProperties,
+) {
+  return {
+    style: normalStyle,
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
+      Object.assign((e.currentTarget as HTMLElement).style, hoverStyle),
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) =>
+      Object.assign((e.currentTarget as HTMLElement).style, normalStyle),
+  };
+}
+
 function Dashboard() {
   const [appState, setAppState] = useState('landing');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -40,12 +57,7 @@ function Dashboard() {
   const [hasModifications, setHasModifications] = useState(false);
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hola, ¿en qué puedo ayudarte?',
-      timestamp: new Date()
-    }
+    { id: '1', role: 'assistant', content: 'Hi! Upload a file and ask me anything about your data.', timestamp: new Date() }
   ]);
   const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getItem('current_session_id'));
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +80,6 @@ function Dashboard() {
     return null;
   };
 
-  // Filter rows based on search term
   const filteredRows = gridData && searchTerm
     ? gridData.rows.filter(row =>
       Object.values(row).some(value =>
@@ -83,15 +94,8 @@ function Dashboard() {
       try {
         const response = await apiFetch('/excel/conversations');
         const data = await response.json();
-
-        if (Array.isArray(data.conversations)) {
-          setConversations(data.conversations);
-        } else {
-          setConversations([]);
-        }
-
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
+        setConversations(Array.isArray(data.conversations) ? data.conversations : []);
+      } catch {
         setConversations([]);
       } finally {
         setIsLoading(false);
@@ -100,66 +104,44 @@ function Dashboard() {
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const token = localStorage.getItem('token');
-    if (!user || !user.id || !token) {
-      navigate('/auth');
-    }
-
+    if (!user || !user.id || !token) navigate('/auth');
     setUser(user);
     fetchConversations();
   }, [navigate]);
 
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
-
     if (!file) return;
-
     setFileName(file.name);
     setCurrentFile(file);
     setIsUploading(true);
-    setHasModifications(false); // fresh upload — no AI transforms applied yet
-
+    setHasModifications(false);
     const formData = new FormData();
     formData.append('file', file);
-
     try {
-      const response = await apiFetch('/excel/upload', {
-        method: 'POST',
-        // NOTE: do NOT set Content-Type manually — browser sets multipart boundary automatically
-        body: formData,
-      });
-
+      const response = await apiFetch('/excel/upload', { method: 'POST', body: formData });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         toast.error((data as { error?: string }).error || 'Upload failed');
-        return; // stop processing — do not proceed to update grid state
+        return;
       }
-
       const textText = await response.text();
       const sanitizedText = textText.replace(/:\s*NaN/g, ': null');
       const data = JSON.parse(sanitizedText);
-
       if (data.status === 'success' && data.data) {
         setGridData(data.data);
         setAppState('view');
-
         if (data.session_id) {
           setSessionId(data.session_id);
           sessionStorage.setItem('current_session_id', data.session_id);
         }
-
         setConversations([
           ...(Array.isArray(conversations) ? conversations : []),
-          {
-            id: data.session_id,
-            filename: file.name,
-            messages: []
-          }
+          { id: data.session_id, filename: file.name, messages: [] }
         ]);
-
       }
-    } catch (error) {
-      console.error('Error al subir el archivo:', error);
+    } catch {
+      // handled by toast
     } finally {
       setIsUploading(false);
     }
@@ -170,30 +152,19 @@ function Dashboard() {
       setSessionId(conversation.id);
       sessionStorage.setItem('current_session_id', conversation.id);
       setActiveConversationId(conversation.id);
-
       setFileName(conversation.filename);
       setCurrentFile(null);
-
-
       setAppState('result');
       const response = await apiFetch(`/excel/conversation/${conversation.id}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load conversation');
-      }
-
+      if (!response.ok) throw new Error('Failed to load conversation');
       const data = await response.json();
-
       if (data.status === 'success' && data.data) {
         if (data.data.grid) {
           setGridData(data.data.grid);
-          // Enable download only when the conversation actually has commands (messages come in pairs: user+assistant per command)
           const hasCommands = Array.isArray(data.data.messages) && data.data.messages.length > 0;
           setHasModifications(hasCommands);
         }
-
         if (data.data.chart_data) {
-          // Attach column metadata to traces when possible so ChartViewer can refresh client-side
           const incomingChart = data.data.chart_data as any;
           if (incomingChart?.data && data.data.grid) {
             incomingChart.data = incomingChart.data.map((trace: any) => {
@@ -211,18 +182,10 @@ function Dashboard() {
         } else {
           setChartData(null);
         }
-
-        if (Array.isArray(data.data.messages)) {
-          setMessages(data.data.messages);
-        } else {
-          setMessages([]);
-        }
-
+        setMessages(Array.isArray(data.data.messages) ? data.data.messages : []);
         setAppState('view');
       }
-
-    } catch (error) {
-      console.error('Error loading conversation:', error);
+    } catch {
       toast.error('Could not load conversation history');
     }
   };
@@ -231,10 +194,7 @@ function Dashboard() {
     if (!sessionId) return;
     try {
       const response = await apiFetch(`/excel/download/${sessionId}`);
-      if (!response.ok) {
-        toast.error('Download failed');
-        return;
-      }
+      if (!response.ok) { toast.error('Download failed'); return; }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -244,8 +204,7 @@ function Dashboard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download error:', err);
+    } catch {
       toast.error('Download failed');
     }
   };
@@ -258,36 +217,20 @@ function Dashboard() {
 
   const handleUndo = async () => {
     if (!sessionId) return;
-
     setAppState('result');
     try {
       const formData = new FormData();
       formData.append('session_id', sessionId);
-
-      const response = await apiFetch('/excel/undo', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to undo');
-      }
-
+      const response = await apiFetch('/excel/undo', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Failed to undo');
       const data = await response.json();
       if (data.status === 'success' && data.data) {
         setGridData(data.data);
-        if (!data.has_chart) {
-          setChartData(null);
-        } else if (data.chart_data) {
-          setChartData(data.chart_data);
-        }
-        // undone: false means there were no commands to undo — we're at the original state
-        if (data.undone === false) {
-          setHasModifications(false);
-        }
+        if (!data.has_chart) setChartData(null);
+        else if (data.chart_data) setChartData(data.chart_data);
+        if (data.undone === false) setHasModifications(false);
       }
-    } catch (error) {
-      console.error('Error undoing:', error);
+    } catch {
       toast.error('Could not undo');
     } finally {
       setAppState('view');
@@ -296,9 +239,8 @@ function Dashboard() {
 
   const handleReset = async () => {
     if (!sessionId) return;
-
     toast("Reset file?", {
-      description: "This will revert all changes made to your data. This action cannot be undone.",
+      description: "This will revert all changes. This action cannot be undone.",
       action: {
         label: "Confirm Reset",
         onClick: async () => {
@@ -306,43 +248,29 @@ function Dashboard() {
           try {
             const formData = new FormData();
             formData.append('session_id', sessionId);
-
-            const response = await apiFetch('/excel/reset', {
-              method: 'POST',
-              body: formData,
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to reset');
-            }
-
+            const response = await apiFetch('/excel/reset', { method: 'POST', body: formData });
+            if (!response.ok) throw new Error('Failed to reset');
             const data = await response.json();
             if (data.status === 'success' && data.data) {
               setGridData(data.data);
               setChartData(null);
-              setHasModifications(false); // all commands cleared — back to original state
+              setHasModifications(false);
               toast.success("File reset successfully");
             }
-          } catch (error) {
-            console.error('Error resetting:', error);
+          } catch {
             toast.error('Could not reset file');
           } finally {
             setAppState('view');
           }
         },
       },
-      cancel: {
-        label: "Cancel",
-        onClick: () => { },
-      },
+      cancel: { label: "Cancel", onClick: () => {} },
     });
   };
 
   const handleDelete = async (conversationId: string, event: React.MouseEvent) => {
     event.stopPropagation();
-
     if (!sessionId) return;
-
     toast("Delete file?", {
       description: "This will delete the file. This action cannot be undone.",
       action: {
@@ -350,18 +278,11 @@ function Dashboard() {
         onClick: async () => {
           setAppState('result');
           try {
-            const response = await apiFetch(`/excel/conversation/${conversationId}`, {
-              method: 'DELETE',
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to delete');
-            }
-
+            const response = await apiFetch(`/excel/conversation/${conversationId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete');
             const data = await response.json();
             if (data.status === 'success' && data.conversations) {
               setConversations(data.conversations);
-              // If the deleted conversation was the active one, clear view state
               if (conversationId === sessionId) {
                 setGridData(null);
                 setChartData(null);
@@ -373,35 +294,22 @@ function Dashboard() {
               }
               toast.success("File deleted successfully");
             }
-          } catch (error) {
-            console.error('Error deleting:', error);
+          } catch {
             toast.error('Could not delete file');
           } finally {
             setAppState('view');
           }
         },
       },
-      cancel: {
-        label: "Cancel",
-        onClick: () => { },
-      },
+      cancel: { label: "Cancel", onClick: () => {} },
     });
   };
-
 
   const handleCloseChart = () => {
     toast("Close chart?", {
       description: "This will close the current chart view.",
-      action: {
-        label: "Confirm",
-        onClick: () => {
-          setChartData(null);
-        }
-      },
-      cancel: {
-        label: "Cancel",
-        onClick: () => { },
-      },
+      action: { label: "Confirm", onClick: () => setChartData(null) },
+      cancel: { label: "Cancel", onClick: () => {} },
     });
   };
 
@@ -410,36 +318,72 @@ function Dashboard() {
     setHasModifications(true);
   };
 
+  // ── hover helpers ────────────────────────────────────────────────────────
+  const sidebarToggleHover = useHover(
+    { color: 'rgba(255,255,255,0.35)' },
+    { background: 'rgba(255,255,255,0.06)', color: '#f8fafc' },
+  );
+  const iconBtnHover = useHover(
+    { border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' },
+    { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: '#f8fafc' },
+  );
+  const logoutHover = useHover(
+    { border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' },
+    { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' },
+  );
 
-
-
+  // ────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex bg-slate-50 font-sans text-slate-900 selection:bg-slate-900 selection:text-white">
-      <Toaster position="top-center" />
-      <aside className={`bg-slate-900 border-r border-slate-800 transition-all duration-500 ease-in-out ${sidebarOpen ? 'w-72' : 'w-0'} overflow-hidden flex flex-col shadow-xl z-20`}>
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-              <img src="./DataMind_Logo.svg" alt="" className="w-10 h-10" />
+    <div className="h-screen flex overflow-hidden" style={{ background: '#0a0a10', color: '#f1f5f9' }}>
+      <Toaster position="top-center" theme="dark" />
+
+      {/* ══════════════════════ SIDEBAR ══════════════════════════════════ */}
+      <aside
+        className={`flex flex-col flex-shrink-0 transition-all duration-500 ease-in-out overflow-hidden z-20 ${sidebarOpen ? 'w-64' : 'w-0'}`}
+        style={{ background: '#0d0d14', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        {/* Logo row */}
+        <div
+          className="flex items-center justify-between px-5 py-5 flex-shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.28)' }}
+            >
+              <img src="./DataMind_Logo.svg" alt="MyCuery" className="w-5 h-5 object-contain" />
             </div>
-            <div>
-              <h2 className="font-bold text-white text-base tracking-tight">DataMind</h2>
-              <p className="text-xs text-slate-400 font-medium">Workspace</p>
+            <div className="min-w-0">
+              <h2 className="font-bold text-sm tracking-tight truncate" style={{ color: '#f8fafc' }}>MyCuery</h2>
+              <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>Workspace</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors">
-            <ChevronLeft className="w-5 h-5" />
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1.5 rounded-lg transition-all flex-shrink-0"
+            {...sidebarToggleHover}
+          >
+            <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-6 py-2">
-          <label htmlFor="sidebar-file-upload" className="flex items-center gap-3 w-full p-3 mb-6 hover:bg-slate-50 text-slate-900 rounded-lg cursor-pointer transition-all shadow-sm group text-white hover:text-black">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center group-hover:bg-slate-800 transition-colors">
-              <Upload className="w-4 h-4 text-white" />
+        {/* New conversation */}
+        <div className="px-4 pt-5 pb-3 flex-shrink-0">
+          <label
+            htmlFor="sidebar-file-upload"
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl cursor-pointer transition-all duration-200"
+            style={{ background: 'rgba(139,92,246,0.14)', border: '1px solid rgba(139,92,246,0.22)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.22)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.14)'; }}
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(139,92,246,0.22)' }}
+            >
+              <Upload className="w-3.5 h-3.5" style={{ color: '#a78bfa' }} />
             </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold">New Conversation</p>
-            </div>
+            <span className="text-sm font-semibold" style={{ color: '#c4b5fd' }}>New Conversation</span>
             <input
               id="sidebar-file-upload"
               type="file"
@@ -448,144 +392,281 @@ function Dashboard() {
               onChange={handleFileUpload}
             />
           </label>
+        </div>
 
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Your files</h3>
-          <div className="space-y-1 relative">
-            <div className="absolute left-[5px] top-4 bottom-4 w-full bg-white/5 -z-10">
-              {
-                conversations.length > 0 ? conversations.map((conversation) => (
+        {/* File list */}
+        <div className="px-4 flex-1 overflow-y-auto min-h-0">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-widest mb-3"
+            style={{ color: 'rgba(255,255,255,0.22)' }}
+          >
+            Your Files
+          </p>
+
+          <div className="space-y-0.5">
+            {conversations.length === 0 ? (
+              <p className="text-xs py-3 px-1" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                No files yet. Upload one above.
+              </p>
+            ) : (
+              conversations.map(conv => {
+                const isActive = activeConversationId === conv.id;
+                return (
                   <div
-                    key={conversation.id}
-                    className={`flex items-center gap-4 p-2 cursor-pointer rounded-lg transition-all ${activeConversationId === conversation.id
-                      ? 'bg-white/15 ring-1 ring-white/20 shadow-lg'
-                      : 'hover:bg-white/10'
-                      }`}
-                    onClick={() => handleFileSelect(conversation)}
+                    key={conv.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group"
+                    style={{
+                      background: isActive ? 'rgba(139,92,246,0.14)' : 'transparent',
+                      border: `1px solid ${isActive ? 'rgba(139,92,246,0.22)' : 'transparent'}`,
+                    }}
+                    onClick={() => handleFileSelect(conv)}
+                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center p-2 ${activeConversationId === conversation.id
-                      ? 'bg-blue-500/20'
-                      : 'bg-blue-500/10'
-                      }`}>
-                      <FileSpreadsheet className={`w-4 h-4 ${activeConversationId === conversation.id
-                        ? 'text-blue-300'
-                        : 'text-blue-400'
-                        }`} />
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: isActive ? 'rgba(139,92,246,0.22)' : 'rgba(255,255,255,0.05)' }}
+                    >
+                      <FileSpreadsheet
+                        className="w-3.5 h-3.5"
+                        style={{ color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
+                      />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4">
-                        <h2 className={`text-sm tracking-tight ${activeConversationId === conversation.id
-                          ? 'text-white'
-                          : 'text-white/90'
-                          }`}>{conversation.filename}</h2>
-                        <button
-                          onClick={(e) => handleDelete(conversation.id, e)}
-                          className="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-slate-400 font-medium">Workspace</p>
-                    </div>
+                    <span
+                      className="flex-1 text-xs font-medium truncate"
+                      style={{ color: isActive ? '#f8fafc' : 'rgba(255,255,255,0.55)' }}
+                    >
+                      {conv.filename}
+                    </span>
+                    <button
+                      onClick={e => handleDelete(conv.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex-shrink-0"
+                      style={{ color: 'rgba(255,255,255,0.35)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                )) : (
-                  <p className="text-xs text-slate-400 font-medium w-full">No files uploaded</p>
-                )
-              }
-            </div>
+                );
+              })
+            )}
           </div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
-        <div className="px-8 py-6 flex items-center justify-between border-b border-slate-200">
-          <div className="flex items-center gap-4">
+      {/* ══════════════════════ MAIN ═════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+        {/* Topbar */}
+        <div
+          className="flex items-center justify-between px-6 py-3.5 flex-shrink-0"
+          style={{
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(10,10,16,0.9)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Left */}
+          <div className="flex items-center gap-3 min-w-0">
             {!sidebarOpen && (
-              <button onClick={() => setSidebarOpen(true)} className="text-slate-400 hover:text-slate-900 hover:bg-slate-50 p-2 rounded-lg transition-all border border-slate-200">
-                <ChevronRight className="w-5 h-5" />
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 rounded-xl transition-all flex-shrink-0"
+                {...iconBtnHover}
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
             )}
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              {fileName || 'New Analysis'}
-            </h1>
+            <div className="flex items-center gap-2 min-w-0">
+              {fileName && (
+                <FileSpreadsheet className="w-4 h-4 flex-shrink-0" style={{ color: '#a78bfa' }} />
+              )}
+              <h1
+                className="text-sm font-semibold tracking-tight truncate"
+                style={{ color: '#f8fafc' }}
+              >
+                {fileName || 'MyCuery Workspace'}
+              </h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 mr-2 bg-white p-1 rounded-lg border border-slate-200">
-              <button
-                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-all disabled:opacity-30 cursor-pointer"
-                title="Undo"
-                onClick={handleUndo}
-                disabled={currentFile === null}
-              >
-                <Undo className="w-4 h-4" />
-              </button>
-              <div className="w-px h-4 bg-slate-200"></div>
-              <button
-                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-all disabled:opacity-30 cursor-pointer"
-                title="Redo"
-                onClick={handleReset}
-                disabled={currentFile === null}
-              >
-                <p>Reset</p>
-              </button>
+
+          {/* Right */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Undo + Reset group */}
+            <div
+              className="flex items-center gap-0.5 rounded-xl p-1"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              {[
+                { label: 'Undo', icon: <Undo className="w-3.5 h-3.5" />, onClick: handleUndo },
+                { label: 'Reset', icon: null, onClick: handleReset },
+              ].map(({ label, icon, onClick }) => (
+                <button
+                  key={label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ color: 'rgba(255,255,255,0.55)' }}
+                  onClick={onClick}
+                  disabled={!sessionId}
+                  onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#f8fafc'; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
+                >
+                  {icon}{label}
+                </button>
+              ))}
             </div>
 
+            {/* Download */}
             <button
-              className={`px-4 py-2 rounded-lg transition font-medium text-sm border border-slate-200 ${
-                hasModifications
-                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer'
-                  : 'text-slate-300 border-slate-100 cursor-not-allowed opacity-40'
-              }`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:cursor-not-allowed"
+              style={hasModifications ? {
+                background: 'rgba(124,58,237,0.18)',
+                border: '1px solid rgba(124,58,237,0.35)',
+                color: '#c4b5fd',
+              } : {
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.25)',
+              }}
               onClick={hasModifications ? handleDownload : undefined}
               disabled={!hasModifications}
-              title={hasModifications ? 'Download modified .xlsx' : 'Apply an AI change first'}
+              onMouseEnter={e => { if (hasModifications) e.currentTarget.style.background = 'rgba(124,58,237,0.28)'; }}
+              onMouseLeave={e => { if (hasModifications) e.currentTarget.style.background = 'rgba(124,58,237,0.18)'; }}
             >
               Download .xlsx
             </button>
-            <button onClick={handleLogout} className="px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 cursor-pointer rounded-lg transition font-medium text-sm border border-slate-200">
-              <LogOut className="w-5 h-5" />
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-xl transition-all"
+              title="Sign out"
+              {...logoutHover}
+            >
+              <LogOut className="w-4 h-4" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white ml-2">
+
+            {/* Avatar */}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{
+                background: 'rgba(139,92,246,0.2)',
+                border: '1px solid rgba(139,92,246,0.38)',
+                color: '#c4b5fd',
+              }}
+            >
               {user?.email.slice(0, 2).toUpperCase()}
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto px-8 pb-8">
-          {(appState === 'result') && (
-            <div className="flex items-center gap-3 py-2 px-1 mb-2">
-              <div className="h-1 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 animate-pulse rounded-full w-1/2" />
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-5 min-h-0">
+
+          {/* Processing indicator */}
+          {appState === 'result' && (
+            <div
+              className="flex items-center gap-4 px-5 py-3.5 rounded-2xl mb-4"
+              style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.14)' }}
+            >
+              <Sparkles
+                className="w-4 h-4 flex-shrink-0 animate-pulse"
+                style={{ color: '#a78bfa' }}
+              />
+              <div className="flex-1 min-w-0">
+                <div
+                  className="h-1 rounded-full overflow-hidden"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                >
+                  <div
+                    className="h-full rounded-full animate-pulse"
+                    style={{ width: '48%', background: 'linear-gradient(90deg,#7c3aed,#a78bfa)' }}
+                  />
+                </div>
               </div>
-              <p className="text-xs font-medium text-slate-500 whitespace-nowrap">
-                {loadingStep || 'Procesando...'}
+              <p className="text-xs font-medium flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {loadingStep || 'Processing…'}
               </p>
             </div>
           )}
 
+          {/* ── Upload / empty state ─────────────────────────────────── */}
           {appState === 'landing' && (
             <div className="h-full flex items-center justify-center">
-              <div className="text-center max-w-2xl w-full">
+              <div className="text-center max-w-lg w-full">
                 <label htmlFor="file-upload" className="group cursor-pointer block">
-                  <div className="relative overflow-hidden bg-white border border-dashed border-slate-300 rounded-2xl p-20 transition-all duration-300 group-hover:border-blue-500 group-hover:shadow-lg">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div
+                    className="relative rounded-3xl p-16 upload-pulse transition-all duration-500"
+                    style={{ background: 'rgba(255,255,255,0.015)', border: '2px dashed rgba(139,92,246,0.22)' }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.04)';
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(139,92,246,0.5)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.015)';
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(139,92,246,0.22)';
+                    }}
+                  >
+                    {/* Ambient glow */}
+                    <div
+                      className="absolute inset-0 rounded-3xl pointer-events-none"
+                      style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 50%, rgba(139,92,246,0.06), transparent)' }}
+                    />
 
                     <div className="relative z-10 flex flex-col items-center">
-                      <div className="w-20 h-20 bg-slate-50 rounded-xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300">
-                        <Upload className="w-8 h-8 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                      {/* Icon with ping ring */}
+                      <div className="relative w-20 h-20 mx-auto mb-8">
+                        <div
+                          className="absolute inset-0 rounded-2xl opacity-30 animate-ping"
+                          style={{ background: 'rgba(139,92,246,0.4)', animationDuration: '2.5s' }}
+                        />
+                        <div
+                          className="relative w-full h-full rounded-2xl flex items-center justify-center"
+                          style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}
+                        >
+                          {isUploading ? (
+                            <div
+                              className="w-8 h-8 border-2 rounded-full animate-spin"
+                              style={{ borderColor: 'rgba(167,139,250,0.25)', borderTopColor: '#a78bfa' }}
+                            />
+                          ) : (
+                            <Upload className="w-8 h-8" style={{ color: '#a78bfa' }} />
+                          )}
+                        </div>
                       </div>
 
-                      <h3 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">
-                        {isUploading ? 'Uploading...' : 'Upload Data'}
+                      <h3
+                        className="text-2xl font-bold mb-3 tracking-tight"
+                        style={{ color: '#f8fafc' }}
+                      >
+                        {isUploading ? 'Uploading your file…' : 'Drop your spreadsheet here'}
                       </h3>
-                      <p className="text-slate-600 mb-8 text-lg max-w-md mx-auto leading-relaxed">
-                        {isUploading ? 'Please wait while we process your file.' : 'Drag and drop your spreadsheet here to start analyzing with AI.'}
+                      <p
+                        className="text-base mb-8 max-w-sm leading-relaxed"
+                        style={{ color: 'rgba(255,255,255,0.38)' }}
+                      >
+                        {isUploading
+                          ? 'Please wait while we read your data.'
+                          : 'Upload an Excel or CSV file and start asking questions about your data in plain English.'}
                       </p>
-                      {isUploading ? (
-                        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-                      ) : (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-xs font-medium text-slate-600">
-                          <FileSpreadsheet className="w-3 h-3" />
-                          <span>.xlsx, .csv supported</span>
+
+                      {!isUploading && (
+                        <div className="flex items-center gap-2 flex-wrap justify-center">
+                          {['.xlsx', '.xls', '.csv'].map(ext => (
+                            <span
+                              key={ext}
+                              className="px-3 py-1 rounded-full text-xs font-mono font-medium"
+                              style={{
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.09)',
+                                color: 'rgba(255,255,255,0.4)',
+                              }}
+                            >
+                              {ext}
+                            </span>
+                          ))}
+                          <span className="text-xs mx-1" style={{ color: 'rgba(255,255,255,0.18)' }}>·</span>
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>max 10 MB</span>
                         </div>
                       )}
                     </div>
@@ -603,58 +684,81 @@ function Dashboard() {
             </div>
           )}
 
-
+          {/* ── View / result state ──────────────────────────────────── */}
           {(appState === 'view' || appState === 'result') && gridData && (
-            <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
-              <div className="flex flex-col lg:flex-row gap-6 h-full">
+            <div className="h-full flex flex-col animate-in fade-in duration-500">
+              <div className={`flex flex-col lg:flex-row gap-5 flex-1 min-h-0`}>
 
-                {/* Data Grid Panel */}
-                <div className={`flex flex-col transition-all duration-500 ease-in-out ${chartData ? 'lg:w-[55%] h-[50%] lg:h-full' : 'w-full h-full'}`}>
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
-                    <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                {/* Data grid panel */}
+                <div
+                  className={`flex flex-col transition-all duration-500 min-h-0 ${chartData ? 'lg:w-[55%] h-[50%] lg:h-full' : 'w-full h-full'}`}
+                >
+                  <div
+                    className="flex flex-col h-full rounded-2xl overflow-hidden"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  >
+                    {/* Panel header */}
+                    <div
+                      className="flex items-center justify-between px-5 py-3.5 flex-shrink-0"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)' }}
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
-                          <FileSpreadsheet className="w-4 h-4" />
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center"
+                          style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.18)' }}
+                        >
+                          <FileSpreadsheet className="w-4 h-4" style={{ color: '#a78bfa' }} />
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-900">Data Preview</h3>
-                          <p className="text-xs text-slate-600">{filteredRows.length} rows • {gridData.columns.length} columns</p>
+                          <h3 className="text-sm font-semibold" style={{ color: '#f8fafc' }}>Data Preview</h3>
+                          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                            {filteredRows.length} rows · {gridData.columns.length} columns
+                          </p>
                         </div>
                       </div>
 
-                      <div className="relative group">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      {/* Search */}
+                      <div className="relative">
+                        <Search
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                          style={{ color: 'rgba(255,255,255,0.3)' }}
+                        />
                         <input
                           type="text"
-                          placeholder="Search data..."
+                          placeholder="Search…"
                           value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-9 pr-4 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 transition-all"
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="pl-9 pr-4 py-2 text-xs rounded-xl outline-none transition-all w-48 dark-placeholder"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.09)',
+                            color: '#f8fafc',
+                          }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.5)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)')}
                         />
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-hidden relative">
+                    {/* Grid */}
+                    <div className="flex-1 overflow-hidden min-h-0">
                       <ExcelPreview
-                        gridData={searchTerm
-                          ? { columns: gridData.columns, rows: filteredRows }
-                          : gridData
-                        }
+                        gridData={searchTerm ? { columns: gridData.columns, rows: filteredRows } : gridData}
                         className="h-full"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Chart Panel */}
+                {/* Chart panel */}
                 {chartData && (
-                  <div className="flex flex-col items-end transition-all duration-500 ease-in-out lg:w-[45%] h-[50%] lg:h-full gap-4 w-full">
-                    <div className="lg:w-full h-[50%] lg:h-full animate-in slide-in-from-right-10 fade-in duration-500">
+                  <div className="flex flex-col transition-all duration-500 lg:w-[45%] h-[50%] lg:h-full min-h-0">
+                    <div className="h-full animate-in slide-in-from-right-10 fade-in duration-500">
                       <ChartViewer
                         chartData={chartData}
                         gridData={gridData}
-                        onClose={() => handleCloseChart()}
-                        className="h-full shadow-sm"
+                        onClose={handleCloseChart}
+                        className="h-full"
                       />
                     </div>
                   </div>
@@ -677,28 +781,42 @@ function Dashboard() {
               />
             </div>
           )}
-
-
-
-          {/* Initial Loading State */}
-          {
-            isLoading && (
-              <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
-                <div className="flex flex-col items-center gap-4 animate-pulse">
-                  <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
-                    <img src="./DataMind_Logo.svg" alt="Logo" className='w-10 h-10 bg-white rounded-lg' />
-                  </div>
-                  <div className="text-center">
-                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">DataMind</h2>
-                  </div>
-                </div>
-              </div>
-            )
-          }
         </div>
       </div>
+
+      {/* ══════════════════════ LOADING SPLASH ═══════════════════════════ */}
+      {isLoading && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: '#0a0a10' }}
+        >
+          <div className="flex flex-col items-center gap-5">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}
+            >
+              <img src="./DataMind_Logo.svg" alt="MyCuery" className="w-9 h-9 object-contain" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold tracking-tight shimmer-text">MyCuery</h2>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                Loading your workspace…
+              </p>
+            </div>
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full animate-bounce"
+                  style={{ background: '#7c3aed', animationDelay: `${i * 150}ms` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default Dashboard
+export default Dashboard;

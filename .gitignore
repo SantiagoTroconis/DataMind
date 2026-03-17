@@ -23,8 +23,20 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
+Core/.env
 Core/uploads/
 
 # Planning docs (local only)
 .planning/
+.claude/
+
+Core/.dockerignore
+Core/app/__pycache__
+Core/app/routes/__pycache__
+Core/app/services/__pycache__
+Core/app/utils/__pycache__
+Core/app/models/__pycache__
+Core/app/config/__pycache__
+Core/app/tests/
+
+Core/.pytest_cache/

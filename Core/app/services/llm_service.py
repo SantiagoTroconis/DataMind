@@ -17,6 +17,11 @@ class LLMService:
 
 The DataFrame 'df' has the following columns: {columns}
 {sample_info}
+Classification rules (apply before choosing intent):
+- Use "DATA_MUTATION" for: setting/changing cell values, filtering rows, renaming columns, sorting, math on data, any change to data content. Setting a cell to a plain number (e.g. 999) is DATA_MUTATION.
+- Use "FORMULA_WRITE" ONLY when the user explicitly asks to INSERT an Excel formula function that starts with = (e.g. =SUM, =AVERAGE, =IF). A plain value like 999 is NOT a formula.
+- Use "VISUAL_UPDATE" for: charts, graphs, plots.
+
 Rules:
 1. Classify the action as one of: 'DATA_MUTATION', 'VISUAL_UPDATE', or 'FORMULA_WRITE'.
 2. Output strictly valid JSON format.
@@ -37,6 +42,7 @@ Specifics for "intent": "VISUAL_UPDATE":
 - Keep the dataframe 'df' READ-ONLY.
 
 Specifics for "intent": "FORMULA_WRITE":
+- ONLY use when the user explicitly requests an Excel formula function (=SUM, =AVERAGE, =IF, =VLOOKUP, etc.).
 - The "code" field must be a JSON array of objects, each with keys "cell" (e.g. "B2") and "formula" (e.g. "=SUM(A1:A10)").
 - Use English Excel function names (SUM, AVERAGE, IF, VLOOKUP, etc.).
 - No Python code — only the JSON array of cell/formula pairs.

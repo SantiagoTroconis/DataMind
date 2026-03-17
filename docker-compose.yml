@@ -1,0 +1,16 @@
+services:
+  # Servicio del Backend (Flask)
+  backend:
+    build: ./Core  # Le dice a Docker dónde buscar el Dockerfile
+    container_name: datamind-backend
+    ports:
+      - "5000:5000" # Mapea el puerto 5000 de tu PC al 5000 del contenedor
+    volumes:
+      - ./Core:/app # "Espejo": Si cambias código en tu PC, se actualiza en el contenedor (útil para desarrollar)
+    environment:
+      - FLASK_ENV=development
+      # Aquí puedes poner tus claves si no copiaste el archivo .env
+      # - JWT_SECRET_KEY=tu_clave_secreta
+    restart: unless-stopped
+
+  # (Opcional) Aquí podríamos agregar el Frontend en el futuro

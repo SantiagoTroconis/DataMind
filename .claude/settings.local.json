@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Skill(gsd:execute-phase)",
+      "WebSearch",
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Skill(gsd:verify-work)",
+      "Bash(git:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
+}

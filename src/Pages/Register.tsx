@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../utils/api";
+import { ParticleCanvas } from "../Components/ParticleCanvas";
 
 interface RegisterProps {
     onSwitchToLogin: () => void;
@@ -73,130 +74,128 @@ export const Register = ({ onSwitchToLogin }: RegisterProps) => {
     return (
         <>
             <Toaster position="top-center" richColors />
-            <div className="min-h-screen flex overflow-hidden">
-                {/* Left Side - Branding */}
-                <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden">
-                    <div className="absolute inset-0">
-                        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-                        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full translate-x-1/3 translate-y-1/3"></div>
-                        <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-blue-400/20 rounded-full animate-ping"></div>
-                        <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-blue-400/20 rounded-full animate-ping animation-delay-2000"></div>
-                        <div className="absolute bottom-1/3 left-1/2 w-2 h-2 bg-blue-400/20 rounded-full animate-ping animation-delay-4000"></div>
-                    </div>
-
-                    <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+            <div className="min-h-screen flex overflow-hidden" style={{ background: '#0a0a10' }}>
+                {/* Left Side – Branding */}
+                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12" style={{ background: '#0d0d14' }}>
+                    <ParticleCanvas count={55} connectDist={120} />
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 60% at 30% 50%, rgba(109,40,217,0.14), transparent)' }} />
+                    <div className="relative z-10 flex flex-col justify-between h-full">
+                        {/* Logo */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                                <img src="DataMind_Logo.svg" alt="MyCuery" className="w-6 h-6 object-contain" />
+                            </div>
+                            <span className="text-xl font-bold" style={{ color: '#f8fafc' }}>MyCuery</span>
+                        </div>
+                        {/* Main copy */}
                         <div>
-                            <div className="flex items-center gap-3 mb-16">
-                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                                    <img src="DataMind_Logo.svg" alt="DataMind" className="w-10 h-10" />
-                                </div>
-                                <span className="text-xl font-bold">DataMind</span>
-                            </div>
-
-                            <div className="space-y-6 max-w-md">
-                                <div>
-                                    <h1 className="text-4xl font-bold mb-4 leading-tight">Join thousands of data professionals</h1>
-                                    <p className="text-slate-400 text-lg">Start your journey with the most powerful data analytics platform.</p>
-                                </div>
-
-                                <div className="pt-8 space-y-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-3xl font-bold text-blue-400">10M+</div>
-                                        <div className="text-sm text-slate-400">Data points<br />processed daily</div>
+                            <h1 className="text-4xl font-bold mb-4 leading-tight" style={{ color: '#f8fafc' }}>Join the conversation<br />with your data.</h1>
+                            <p className="text-base mb-10" style={{ color: 'rgba(255,255,255,0.4)' }}>Create your workspace and start in minutes.</p>
+                            <div className="space-y-6">
+                                {[
+                                    { value: '10K+', label: 'Files analyzed' },
+                                    { value: '< 2s', label: 'Avg response time' },
+                                    { value: '99.9%', label: 'Uptime' },
+                                ].map(({ value, label }) => (
+                                    <div key={label} className="flex items-center gap-4">
+                                        <span className="text-3xl font-bold" style={{ color: '#a78bfa' }}>{value}</span>
+                                        <span className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</span>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-3xl font-bold text-blue-400">500+</div>
-                                        <div className="text-sm text-slate-400">Enterprise<br />customers</div>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-3xl font-bold text-blue-400">99.9%</div>
-                                        <div className="text-sm text-slate-400">Uptime<br />guarantee</div>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
-
-                        <div className="text-sm text-slate-500">
-                            © 2026 DataMind. All rights reserved.
-                        </div>
+                        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© 2026 MyCuery Inc. All rights reserved.</p>
                     </div>
                 </div>
 
-                {/* Right Side - Form */}
-                <div className="flex-1 flex items-center justify-center p-8 bg-white">
+                {/* Right Side – Form */}
+                <div className="flex-1 flex items-center justify-center p-8" style={{ background: '#0a0a10' }}>
                     <div className="w-full max-w-md">
+                        {/* Mobile logo */}
                         <div className="lg:hidden flex items-center gap-3 mb-10">
-                            <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
-                                <img src="DataMind_Logo.svg" alt="DataMind" className="w-10 h-10 bg-white rounded-lg" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                                <img src="DataMind_Logo.svg" alt="MyCuery" className="w-6 h-6" />
                             </div>
-                            <span className="text-xl font-bold text-slate-900">DataMind</span>
+                            <span className="text-xl font-bold" style={{ color: '#f8fafc' }}>MyCuery</span>
                         </div>
 
                         <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-slate-900 mb-2">Create your account</h2>
-                            <p className="text-slate-600">Start your data journey with DataMind</p>
+                            <h2 className="text-3xl font-bold mb-2" style={{ color: '#f8fafc' }}>Create your account</h2>
+                            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>Start your journey with MyCuery</p>
                         </div>
 
                         <form onSubmit={handleRegister} className="space-y-5" autoComplete="off">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                                <label className="block text-sm font-medium mb-2" style={{ color: 'rgba(255,255,255,0.65)' }}>Email Address</label>
                                 <input
                                     type="email"
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-slate-900 placeholder:text-slate-400"
+                                    className="w-full px-4 py-3 rounded-xl outline-none transition"
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#f8fafc' }}
+                                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.6)')}
+                                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
                                 />
                                 {emailError && (
-                                    <p className="text-sm text-red-600 mt-1">{emailError}</p>
+                                    <p className="text-sm mt-1" style={{ color: '#f87171' }}>{emailError}</p>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                                <label className="block text-sm font-medium mb-2" style={{ color: 'rgba(255,255,255,0.65)' }}>Password</label>
                                 <input
                                     type="password"
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-slate-900 placeholder:text-slate-400"
+                                    className="w-full px-4 py-3 rounded-xl outline-none transition"
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#f8fafc' }}
+                                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.6)')}
+                                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
                                 />
-                                {passwordError && (
-                                    <p className="text-sm text-red-600 mt-1">{passwordError}</p>
-                                )}
-                                {!passwordError && (
-                                    <p className="text-xs text-slate-500 mt-1">Must be at least 8 characters</p>
+                                {passwordError ? (
+                                    <p className="text-sm mt-1" style={{ color: '#f87171' }}>{passwordError}</p>
+                                ) : (
+                                    <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>Must be at least 8 characters</p>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
+                                <label className="block text-sm font-medium mb-2" style={{ color: 'rgba(255,255,255,0.65)' }}>Confirm Password</label>
                                 <input
                                     type="password"
                                     name="confirmPassword"
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white text-slate-900 placeholder:text-slate-400"
+                                    className="w-full px-4 py-3 rounded-xl outline-none transition"
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#f8fafc' }}
+                                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.6)')}
+                                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
                                 />
                                 {confirmError && (
-                                    <p className="text-sm text-red-600 mt-1">{confirmError}</p>
+                                    <p className="text-sm mt-1" style={{ color: '#f87171' }}>{confirmError}</p>
                                 )}
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={isDisabled}
-                                className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md mt-6"
+                                className="w-full font-semibold py-3.5 rounded-xl transition-all duration-200 mt-6"
+                                style={{ background: isDisabled ? 'rgba(124,58,237,0.4)' : '#7c3aed', color: '#fff', cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                onMouseEnter={e => { if (!isDisabled) e.currentTarget.style.boxShadow = '0 8px 30px rgba(124,58,237,0.4)'; }}
+                                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                             >
                                 {isLoading ? 'Creating Account...' : 'Create Account'}
                             </button>
 
-                            <div className="text-center text-sm text-slate-600 mt-8 pt-8 border-t border-slate-200">
+                            <div className="text-center text-sm mt-8 pt-8" style={{ color: 'rgba(255,255,255,0.38)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                                 Already have an account?{' '}
                                 <button
                                     type="button"
                                     onClick={onSwitchToLogin}
-                                    className="text-blue-600 font-semibold hover:text-blue-700 cursor-pointer"
+                                    className="font-semibold cursor-pointer"
+                                    style={{ color: '#a78bfa' }}
                                 >
                                     Sign in
                                 </button>

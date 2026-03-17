@@ -114,6 +114,16 @@ None - no external service configuration required. GEMINI_API_KEY / other LLM ke
 - Sandbox hardened — all AI-generated code passes through SEC-01 gates before exec
 - 7/7 tests green (test_sandbox.py + test_llm_service.py)
 
+## Self-Check: PASSED
+
+- Core/app/services/llm_service.py: FOUND
+- Core/app/services/code_execution_service.py: FOUND
+- Core/app/models/command.py: FOUND
+- .planning/phases/02-ai-pipeline/02-02-SUMMARY.md: FOUND
+- Task 1 commit fd76401: FOUND
+- Task 2 commit 338018a: FOUND
+- Metadata commit 91e8056: FOUND
+
 ---
 *Phase: 02-ai-pipeline*
 *Completed: 2026-03-08*

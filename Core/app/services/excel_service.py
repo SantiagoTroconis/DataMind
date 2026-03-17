@@ -78,8 +78,17 @@ class ExcelService:
     @staticmethod
     def format_dataframe_response(df: pd.DataFrame):
         columns = df.columns.tolist()
+        # Convert Timestamps and other non-serializable types to strings
+        df = df.copy()
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]):
+                df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S').where(df[col].notna(), None)
         result_data = df.replace({np.nan: None}).to_dict(orient='records')
-        
+        # Catch any remaining non-serializable types (e.g. pd.Timestamp from mixed columns)
+        for row in result_data:
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
         return {
             "columns": columns,
             "rows": result_data

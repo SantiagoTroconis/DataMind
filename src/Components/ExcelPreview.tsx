@@ -17,9 +17,7 @@ export function ExcelPreview({ file, gridData, className }: ExcelPreviewProps) {
   const [isParsing, setIsParsing] = useState(false);
 
   useEffect(() => {
-    if (!file || gridData != null) {
-      return;
-    }
+    if (!file || gridData != null) return;
 
     setIsParsing(true);
     const reader = new FileReader();
@@ -41,9 +39,7 @@ export function ExcelPreview({ file, gridData, className }: ExcelPreviewProps) {
           const headers = (rawRows[0] as unknown[]).map((h) => String(h ?? ''));
           const dataRows = (rawRows.slice(1) as unknown[][]).map((row) => {
             const obj: Record<string, unknown> = {};
-            headers.forEach((col, i) => {
-              obj[col] = row[i] ?? null;
-            });
+            headers.forEach((col, i) => { obj[col] = row[i] ?? null; });
             return obj;
           });
           setParsedData({ columns: headers, rows: dataRows });
@@ -55,27 +51,25 @@ export function ExcelPreview({ file, gridData, className }: ExcelPreviewProps) {
         setIsParsing(false);
       }
     };
-    reader.onerror = (err) => {
-      console.error('ExcelPreview: FileReader error', err);
-      setIsParsing(false);
-    };
+    reader.onerror = () => setIsParsing(false);
   }, [file, gridData]);
 
   const activeData = gridData ?? parsedData;
 
   if (activeData && activeData.columns.length > 0) {
     return (
-      <div className={`flex flex-col h-full ${className ?? ''}`}>
+      // dark-grid wrapper — CSS variables override happens via index.css (.dark-grid .rdg-light)
+      <div
+        className={`flex flex-col h-full dark-grid ${className ?? ''}`}
+      >
         <DataGrid
           columns={activeData.columns.map((col) => ({
             key: col,
             name: col,
             resizable: true,
-            width:
-              activeData.columns.length > 8
-                ? 180
-                : `${100 / activeData.columns.length}%`,
-            headerCellClass: 'bg-slate-50 text-slate-700 font-medium',
+            width: activeData.columns.length > 8 ? 180 : `${100 / activeData.columns.length}%`,
+            // headerCellClass: only font/weight — colors come from CSS variable overrides
+            headerCellClass: 'font-semibold text-xs tracking-wide',
           }))}
           rows={activeData.rows}
           className="rdg-light h-full border-0 text-sm"
@@ -89,14 +83,17 @@ export function ExcelPreview({ file, gridData, className }: ExcelPreviewProps) {
   if (isParsing) {
     return (
       <div className={`flex flex-col h-full items-center justify-center ${className ?? ''}`}>
-        <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+        <div
+          className="w-6 h-6 border-2 rounded-full animate-spin"
+          style={{ borderColor: 'rgba(167,139,250,0.2)', borderTopColor: '#a78bfa' }}
+        />
       </div>
     );
   }
 
   return (
     <div className={`flex flex-col h-full items-center justify-center ${className ?? ''}`}>
-      <p className="text-slate-500 text-sm">No data to display</p>
+      <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>No data to display</p>
     </div>
   );
 }

@@ -4,12 +4,14 @@ import { type Data } from 'plotly.js';
 import { Sparkles, X, Send, Bot, User, Code, BarChart, Type } from 'lucide-react';
 import type { Message } from '../Pages/Dashboard';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../utils/api';
 
 interface ChatBoxProps {
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
     appState?: string;
     setAppState?: (state: string) => void;
+    onLoadingStep?: (step: string) => void;
     file?: File | null;
     onUpdateGrid?: (data: { columns: string[], rows: Record<string, unknown>[] }) => void;
     onUpdateFile?: (file: File) => void;
@@ -24,20 +26,20 @@ const QUICK_ACTIONS = [
         icon: Sparkles,
         label: 'Auto-Clean',
         prompt: "Identify and remove duplicate rows and handle missing values by filling them with the mean or 'Unknown'.",
-        description: "Identify and remove duplicate rows and handle missing values."
+        description: "Remove duplicates and fill missing values.",
     },
     {
         icon: BarChart,
         label: 'Quick Stats',
         prompt: "Provide a summary of the numerical columns and tell me the most frequent value in categorical columns.",
-        description: "Get a summary of numerical columns and frequent values."
+        description: "Summarize numerical columns and frequent values.",
     },
     {
         icon: Type,
         label: 'Standardize',
         prompt: "Make all column names lowercase and replace spaces with underscores.",
-        description: "Standardize column names to lowercase with underscores."
-    }
+        description: "Standardize column names.",
+    },
 ];
 
 const generateCsvFile = (columns: string[], rows: Record<string, unknown>[]): File => {
@@ -45,26 +47,24 @@ const generateCsvFile = (columns: string[], rows: Record<string, unknown>[]): Fi
         if (val === null || val === undefined) return '';
         return `"${String(val).replace(/"/g, '""')}"`;
     };
-
     const header = columns.map(c => processValue(c)).join(',');
-    const body = rows.map(row =>
-        columns.map(col => processValue(row[col])).join(',')
-    ).join('\n');
-
-    // Add BOM for better Excel compatibility just in case, though usually optional
+    const body = rows.map(row => columns.map(col => processValue(row[col])).join(',')).join('\n');
     const BOM = '\uFEFF';
     const content = `${BOM}${header}\n${body}`;
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     return new File([blob], 'modified_data.csv', { type: 'text/csv' });
 };
 
-export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpdateFile, onUpdateGrid, onChartGenerated, messages, setMessages, sessionId }: ChatBoxProps) {
+export function ChatBox({
+    isOpen = false, onOpenChange, setAppState, onLoadingStep,
+    file: _file, onUpdateFile, onUpdateGrid, onChartGenerated,
+    messages, setMessages, sessionId,
+}: ChatBoxProps) {
     const [prompt, setPrompt] = useState('');
     const [viewingCode, setViewingCode] = useState<string | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [token] = useState(() => localStorage.getItem('token'));
-
 
     useEffect(() => {
         if (isOpen && scrollRef.current) {
@@ -87,17 +87,16 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
             id: Date.now().toString(),
             role: 'user',
             content: contentToSend,
-            timestamp: new Date()
+            timestamp: new Date(),
         };
 
         setMessages([...messages, userMsg]);
-
-        // Close chat and show loading
         onOpenChange?.(false);
+        onLoadingStep?.('Interpreting…');
         setAppState?.('result');
 
         try {
-            const response = await fetch('http://localhost:5000/excel/transform', {
+            const response = await fetch(`${API_BASE_URL}/excel/transform`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -110,7 +109,7 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
             });
 
             if (!response.ok) {
-                toast.error('Error al conectar con el servidor');
+                toast.error('Error connecting to server');
                 setAppState?.('view');
                 return;
             }
@@ -123,7 +122,6 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
                 const { done, value } = await reader.read();
                 if (done) break;
                 buffer += decoder.decode(value, { stream: true });
-
                 const frames = buffer.split('\n\n');
                 buffer = frames.pop() || '';
 
@@ -137,10 +135,10 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
                     const eventType = eventLine ? eventLine.slice(6).trim() : 'message';
 
                     if (eventType === 'progress') {
-                        // Update loading status message shown in the processing overlay
+                        if (payload.step) onLoadingStep?.(payload.step);
                         setAppState?.('result');
                     } else if (eventType === 'done') {
-                        // Update grid with payload.data
+                        onLoadingStep?.('Done');
                         if ((payload.type === 'update' || payload.type === 'formula') && onUpdateGrid && payload.data) {
                             onUpdateGrid(payload.data);
                             if (onUpdateFile) {
@@ -148,11 +146,9 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
                                 onUpdateFile(newFile);
                             }
                         }
-                        // Update chart if present
                         if (payload.has_chart && payload.chart_data && onChartGenerated) {
                             onChartGenerated(payload.chart_data);
                         }
-                        // Add AI explanation as assistant message
                         if (payload.explanation) {
                             const assistantMsg: Message = {
                                 id: (Date.now() + 1).toString(),
@@ -163,29 +159,27 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
                             setMessages(prev => [...prev, assistantMsg]);
                         }
                     } else if (eventType === 'error') {
-                        toast.error(payload.error || 'Error al procesar el cambio');
+                        toast.error(payload.error || 'Error processing the change');
                     }
                 }
             }
 
-            // Restore view state after stream ends
             setAppState?.('view');
             onOpenChange?.(true);
             setPrompt('');
             if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        } catch (error) {
-            console.error('Error:', error);
+        } catch {
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: 'Lo siento, hubo un error al procesar tu solicitud.',
-                timestamp: new Date()
+                content: 'Sorry, there was an error processing your request.',
+                timestamp: new Date(),
             };
             setMessages(prev => [...prev, errorMsg]);
             setAppState?.('view');
             setPrompt('');
         }
-    }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -196,157 +190,253 @@ export function ChatBox({ isOpen = false, onOpenChange, setAppState, file, onUpd
 
     return (
         <>
+            {/* Backdrop */}
             <div
-                className={`fixed inset-0 bg-black/20 backdrop-blur-[1px] z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`}
+                className={`fixed inset-0 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
                 onClick={() => onOpenChange?.(false)}
             />
 
-            {/* Chat Container - Aligned Bottom Right */}
-            <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end w-full max-w-[500px] pointer-events-none">
+            {/* Chat container */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end w-full max-w-[480px] pointer-events-none">
+
+                {/* ── Chat panel ─────────────────────────────────────── */}
                 <div
-                    className={`w-full bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) pointer-events-auto origin-bottom mb-4 ${isOpen
-                        ? 'h-[600px] opacity-100 scale-100 translate-y-0'
-                        : 'h-0 opacity-0 scale-95 translate-y-4'
-                        }`}
+                    className={`w-full rounded-2xl overflow-hidden pointer-events-auto origin-bottom mb-4 transition-all duration-500 ${isOpen
+                        ? 'h-[580px] opacity-100 scale-100 translate-y-0'
+                        : 'h-0 opacity-0 scale-95 translate-y-4 pointer-events-none'
+                    }`}
+                    style={{
+                        background: 'rgba(13,13,20,0.97)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        backdropFilter: 'blur(24px)',
+                        boxShadow: '0 32px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    }}
                 >
                     {/* Header */}
-                    <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between bg-white">
+                    <div
+                        className="px-5 py-4 flex items-center justify-between flex-shrink-0"
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+                    >
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
-                                <Sparkles className="w-4 h-4 text-white" />
+                            <div
+                                className="w-8 h-8 rounded-xl flex items-center justify-center"
+                                style={{
+                                    background: 'linear-gradient(135deg,rgba(124,58,237,0.3),rgba(109,40,217,0.3))',
+                                    border: '1px solid rgba(139,92,246,0.35)',
+                                }}
+                            >
+                                <Sparkles className="w-4 h-4" style={{ color: '#a78bfa' }} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-zinc-900 text-sm">DataMind Assistant</h3>
-                                <p className="text-xs text-zinc-500">AI Data Analyst</p>
+                                <h3 className="font-bold text-sm" style={{ color: '#f8fafc' }}>MyCuery</h3>
+                                <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>AI Data Assistant</p>
                             </div>
                         </div>
                         <button
                             onClick={() => onOpenChange?.(false)}
-                            className="p-2 hover:bg-zinc-50 rounded-lg text-zinc-400 hover:text-zinc-600 transition-colors"
+                            className="p-1.5 rounded-lg transition-all"
+                            style={{ color: 'rgba(255,255,255,0.35)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = '#f8fafc'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
                         >
                             <X className="w-4 h-4" />
                         </button>
                     </div>
 
-                    {/* Messages Area */}
-                    <div ref={scrollRef} className="p-6 h-[calc(100%-190px)] overflow-y-auto space-y-6 bg-zinc-50/50">
-                        {messages.map((msg) => (
-                            <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${msg.role === 'assistant' ? 'bg-indigo-100' : 'bg-zinc-200'
-                                    }`}>
-                                    {msg.role === 'assistant' ? (
-                                        <Bot className="w-4 h-4 text-indigo-600" />
-                                    ) : (
-                                        <User className="w-4 h-4 text-zinc-500" />
-                                    )}
+                    {/* Messages */}
+                    <div
+                        ref={scrollRef}
+                        className="p-5 overflow-y-auto space-y-4"
+                        style={{ height: 'calc(100% - 186px)' }}
+                    >
+                        {messages.map(msg => (
+                            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                {/* Avatar */}
+                                <div
+                                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                                    style={{
+                                        background: msg.role === 'assistant' ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.07)',
+                                        border: `1px solid ${msg.role === 'assistant' ? 'rgba(139,92,246,0.28)' : 'rgba(255,255,255,0.1)'}`,
+                                    }}
+                                >
+                                    {msg.role === 'assistant'
+                                        ? <Bot className="w-3.5 h-3.5" style={{ color: '#a78bfa' }} />
+                                        : <User className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                                    }
                                 </div>
-                                <div className={`space-y-1 max-w-[85%] ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
-                                    <div className={`p-4 rounded-2xl shadow-sm border text-sm leading-relaxed ${msg.role === 'assistant'
-                                        ? 'bg-white rounded-tl-none border-zinc-100 text-zinc-600'
-                                        : 'bg-zinc-900 rounded-tr-none border-transparent text-white'
-                                        }`}>
+
+                                {/* Bubble */}
+                                <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
+                                    <div
+                                        className="px-4 py-3 text-sm leading-relaxed"
+                                        style={msg.role === 'assistant' ? {
+                                            background: 'rgba(255,255,255,0.04)',
+                                            border: '1px solid rgba(255,255,255,0.07)',
+                                            color: 'rgba(255,255,255,0.75)',
+                                            borderRadius: '4px 16px 16px 16px',
+                                        } : {
+                                            background: 'rgba(139,92,246,0.2)',
+                                            border: '1px solid rgba(139,92,246,0.3)',
+                                            color: '#c4b5fd',
+                                            borderRadius: '16px 4px 16px 16px',
+                                        }}
+                                    >
                                         {msg.content}
                                         {msg.executed_code && (
                                             <button
                                                 onClick={() => setViewingCode(msg.executed_code!)}
-                                                className="mt-3 flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors w-fit group"
+                                                className="mt-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all w-fit"
+                                                style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa' }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.25)')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.15)')}
                                             >
-                                                <Code className="w-3.5 h-3.5" />
+                                                <Code className="w-3 h-3" /> View code
                                             </button>
                                         )}
                                     </div>
-                                    {/* <span className={`text-[10px] text-zinc-400 ${msg.role === 'user' ? 'pr-1' : 'pl-1'}`}>
-                                        {msg.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span> */}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Quick Config */}
-                    <div className="px-4 pb-2 bg-white">
-                        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-2">
+                    {/* Quick actions */}
+                    <div
+                        className="px-4 py-2 flex-shrink-0"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                        <div className="flex gap-2 overflow-x-auto py-1">
                             {QUICK_ACTIONS.map((action, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => handleSend(action.prompt)}
-                                    className="group flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 border border-zinc-200 hover:border-indigo-200 hover:bg-indigo-50 rounded-full text-xs font-medium text-zinc-600 hover:text-indigo-700 transition-all whitespace-nowrap flex-shrink-0"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex-shrink-0"
+                                    style={{
+                                        background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        color: 'rgba(255,255,255,0.48)',
+                                    }}
                                     title={action.description}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(139,92,246,0.14)';
+                                        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.28)';
+                                        e.currentTarget.style.color = '#c4b5fd';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                        e.currentTarget.style.color = 'rgba(255,255,255,0.48)';
+                                    }}
                                 >
-                                    <action.icon className="w-3 h-3 text-zinc-400 group-hover:text-indigo-500 transition-colors" />
+                                    <action.icon className="w-3 h-3" />
                                     {action.label}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Input Area */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-zinc-100">
-                        <div className="relative flex items-center gap-2">
+                    {/* Input */}
+                    <div
+                        className="px-4 pb-4 pt-3 flex-shrink-0"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                        <div className="flex items-end gap-2">
                             <textarea
                                 ref={textareaRef}
                                 value={prompt}
-                                onChange={(e) => {
-                                    setPrompt(e.target.value);
-                                    adjustTextareaHeight();
-                                }}
+                                onChange={e => { setPrompt(e.target.value); adjustTextareaHeight(); }}
                                 onKeyDown={handleKeyDown}
                                 name="prompt"
-                                placeholder="Ask about your data..."
+                                placeholder="Ask about your data…"
                                 rows={1}
-                                className="w-full pl-4 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-300 transition-all text-sm resize-none scrollbar-hide"
-                                style={{ minHeight: '46px', maxHeight: '120px' }}
+                                className="flex-1 px-4 py-3 rounded-xl text-sm resize-none outline-none transition-all dark-placeholder"
+                                style={{
+                                    minHeight: '46px',
+                                    maxHeight: '120px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    color: '#f8fafc',
+                                }}
+                                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.55)')}
+                                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
                             />
                             <button
-                                className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-3 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                                style={{ background: '#7c3aed', color: '#fff' }}
                                 onClick={() => handleSend()}
                                 disabled={prompt.trim().length <= 3}
+                                onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#6d28d9'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(124,58,237,0.45)'; } }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#7c3aed'; e.currentTarget.style.boxShadow = 'none'; }}
                             >
-                                <Send className="w-3.5 h-3.5" />
+                                <Send className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Trigger */}
-
+                {/* ── FAB trigger ────────────────────────────────────── */}
                 <button
                     onClick={() => onOpenChange?.(!isOpen)}
-                    className={`pointer-events-auto group flex items-center justify-center w-10 h-10 bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-400 hover:text-zinc-900 rounded-full shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isOpen ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
-                        }`}
+                    className={`pointer-events-auto flex items-center gap-2.5 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-300 cursor-pointer fab-glow ${isOpen
+                        ? 'opacity-0 scale-90 pointer-events-none translate-y-2'
+                        : 'opacity-100 scale-100 translate-y-0'
+                    }`}
+                    style={{
+                        background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                        color: '#fff',
+                    }}
                 >
-                    <Code className="w-5 h-5" />
+                    <Sparkles className="w-4 h-4" />
+                    Ask MyCuery
                 </button>
             </div>
 
-            {/* Code Modal */}
+            {/* ── Code modal ─────────────────────────────────────────── */}
             {viewingCode && (
-                <div className={`fixed inset-0 z-[60] flex items-center justify-center p-4 transition-all duration-300 ${viewingCode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div
+                    className={`fixed inset-0 z-[60] flex items-center justify-center p-4 transition-all duration-300 ${viewingCode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                >
                     <div
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        className="absolute inset-0"
+                        style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
                         onClick={() => setViewingCode(null)}
                     />
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-white">
+                    <div
+                        className="relative w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] rounded-2xl"
+                        style={{
+                            background: '#0d0d14',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+                        }}
+                    >
+                        <div
+                            className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+                            style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+                        >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                                    <Code className="w-5 h-5" />
+                                <div
+                                    className="p-2 rounded-xl"
+                                    style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.22)' }}
+                                >
+                                    <Code className="w-4 h-4" style={{ color: '#a78bfa' }} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-zinc-900 text-sm">Transformation Code</h3>
-                                    <p className="text-xs text-zinc-500">Python Logic</p>
+                                    <h3 className="font-bold text-sm" style={{ color: '#f8fafc' }}>Transformation Code</h3>
+                                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Python Logic</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setViewingCode(null)}
-                                className="p-2 hover:bg-zinc-50 rounded-lg text-zinc-400 hover:text-zinc-600 transition-colors"
+                                className="p-1.5 rounded-lg transition-all"
+                                style={{ color: 'rgba(255,255,255,0.35)' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = '#f8fafc'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-auto bg-[#1e1e1e] p-6">
-                            <pre className="text-sm font-mono text-zinc-100 leading-relaxed whitespace-pre-wrap font-ligatures-none">
+                        <div className="flex-1 overflow-auto p-6" style={{ background: '#09090f' }}>
+                            <pre className="text-sm font-mono leading-relaxed whitespace-pre-wrap" style={{ color: '#e2e8f0' }}>
                                 <code>{viewingCode}</code>
                             </pre>
                         </div>
