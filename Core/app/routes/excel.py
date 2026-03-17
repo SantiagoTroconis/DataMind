@@ -12,12 +12,48 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 excel_bp = Blueprint('excel', __name__)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_SELECTION_CELLS = 5000
 
 
 def format_sse(data: str, event: str = None) -> str:
     """Format a Server-Sent Event frame."""
     msg = f'event: {event}\n' if event else ''
     return msg + f'data: {data}\n\n'
+
+
+def _build_scoped_dataframe(selection_payload: dict) -> pd.DataFrame:
+    """Build a dataframe from a validated frontend range selection payload."""
+    if not isinstance(selection_payload, dict):
+        raise ValueError("Invalid selection payload")
+
+    columns = selection_payload.get('columns')
+    rows = selection_payload.get('rows')
+    cell_count = int(selection_payload.get('cellCount') or 0)
+
+    if not isinstance(columns, list) or not columns:
+        raise ValueError("Selected range must include columns")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("Selected range must include rows")
+    if cell_count <= 0:
+        raise ValueError("Selected range is empty")
+    if cell_count > MAX_SELECTION_CELLS:
+        raise ValueError(f"Selected range exceeds max allowed cells ({MAX_SELECTION_CELLS})")
+
+    normalized_rows = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        normalized_rows.append({col: row.get(col, None) for col in columns})
+
+    if not normalized_rows:
+        raise ValueError("Selected range has no valid rows")
+
+    scoped_df = pd.DataFrame(normalized_rows)
+    scoped_df = scoped_df[[col for col in columns if col in scoped_df.columns]]
+    if scoped_df.empty or scoped_df.shape[1] == 0:
+        raise ValueError("Selected range produced an empty dataframe")
+
+    return scoped_df
 
 
 @excel_bp.post('/upload')
@@ -67,6 +103,7 @@ def transform_excel():
     current_user_id = get_jwt_identity()
     session_id = request.form.get('session_id')
     prompt = request.form.get('prompt')
+    selected_range_raw = request.form.get('selected_range')
 
     # Validate before entering SSE generator — return plain JSON 400 for missing/bad input
     if not session_id or not prompt:
@@ -85,10 +122,21 @@ def transform_excel():
             # Replay to get current DataFrame
             current_df = _replay_session(session)
 
-            columns = current_df.columns.tolist()
+            selected_scope_df = None
+            selected_range = None
+            if selected_range_raw:
+                try:
+                    selected_range = json.loads(selected_range_raw)
+                    selected_scope_df = _build_scoped_dataframe(selected_range)
+                except Exception as selection_err:
+                    yield format_sse(json.dumps({"error": f"Selected range is invalid: {selection_err}"}), event="error")
+                    return
+
+            columns = selected_scope_df.columns.tolist() if selected_scope_df is not None else current_df.columns.tolist()
             sample_data = None
-            if not current_df.empty:
-                sample_data = current_df.iloc[0].where(pd.notnull(current_df.iloc[0]), None).to_dict()
+            llm_df = selected_scope_df if selected_scope_df is not None else current_df
+            if llm_df is not None and not llm_df.empty:
+                sample_data = llm_df.iloc[0].where(pd.notnull(llm_df.iloc[0]), None).to_dict()
 
             # Generate transformation code from LLM
             code_data = LLMService.generate_transformation_code(prompt, columns, sample_data)
@@ -102,6 +150,10 @@ def transform_excel():
                 intent = 'DATA_MUTATION'
 
             yield format_sse(json.dumps({"step": "Ejecutando..."}), event="progress")
+
+            if selected_scope_df is not None and intent != 'VISUAL_UPDATE':
+                yield format_sse(json.dumps({"error": "La selección de celdas solo aplica para crear gráficas. Para cambios de datos, limpia la selección o pide una gráfica."}), event="error")
+                return
 
             if intent == 'FORMULA_WRITE':
                 # code may be already a list (parsed by LLM service) or a JSON string
@@ -134,7 +186,8 @@ def transform_excel():
                 }), event="done")
 
             elif intent == 'VISUAL_UPDATE':
-                chart_json = CodeExecutionService.execute_chart_generation(current_df, code)
+                chart_input_df = selected_scope_df if selected_scope_df is not None else current_df
+                chart_json = CodeExecutionService.execute_chart_generation(chart_input_df, code)
                 StateManager.add_command(
                     session_id, prompt,
                     "pass",

@@ -6,7 +6,7 @@ import {
 import { type Data } from 'plotly.js';
 import { ChatBox } from '../Components/ChatBox';
 import { ChartViewer } from '../Components/ChartViewer';
-import { ExcelPreview } from '../Components/ExcelPreview';
+import { ExcelPreview, type SelectedRangePayload } from '../Components/ExcelPreview';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import { apiFetch } from '../utils/api';
@@ -65,6 +65,7 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState('');
+  const [selectedRange, setSelectedRange] = useState<SelectedRangePayload | null>(null);
 
   const findColumnByValues = (arr: unknown[] | undefined, grid: { columns: string[]; rows: Record<string, unknown>[] } | null) => {
     if (!arr || !grid) return null;
@@ -130,6 +131,7 @@ function Dashboard() {
       const data = JSON.parse(sanitizedText);
       if (data.status === 'success' && data.data) {
         setGridData(data.data);
+        setSelectedRange(null);
         setAppState('view');
         if (data.session_id) {
           setSessionId(data.session_id);
@@ -161,6 +163,7 @@ function Dashboard() {
       if (data.status === 'success' && data.data) {
         if (data.data.grid) {
           setGridData(data.data.grid);
+          setSelectedRange(null);
           const hasCommands = Array.isArray(data.data.messages) && data.data.messages.length > 0;
           setHasModifications(hasCommands);
         }
@@ -212,7 +215,15 @@ function Dashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/auth');
+    sessionStorage.removeItem('current_session_id');
+    setSessionId(null);
+    setActiveConversationId(null);
+    setGridData(null);
+    setSelectedRange(null);
+    setChartData(null);
+    setMessages([{ id: '1', role: 'assistant', content: 'Hi! Upload a file and ask me anything about your data.', timestamp: new Date() }]);
+    setChatOpen(false);
+    navigate('/auth', { replace: true });
   };
 
   const handleUndo = async () => {
@@ -226,6 +237,7 @@ function Dashboard() {
       const data = await response.json();
       if (data.status === 'success' && data.data) {
         setGridData(data.data);
+        setSelectedRange(null);
         if (!data.has_chart) setChartData(null);
         else if (data.chart_data) setChartData(data.chart_data);
         if (data.undone === false) setHasModifications(false);
@@ -253,6 +265,7 @@ function Dashboard() {
             const data = await response.json();
             if (data.status === 'success' && data.data) {
               setGridData(data.data);
+              setSelectedRange(null);
               setChartData(null);
               setHasModifications(false);
               toast.success("File reset successfully");
@@ -285,6 +298,7 @@ function Dashboard() {
               setConversations(data.conversations);
               if (conversationId === sessionId) {
                 setGridData(null);
+                setSelectedRange(null);
                 setChartData(null);
                 setSessionId(null);
                 sessionStorage.removeItem('current_session_id');
@@ -315,6 +329,7 @@ function Dashboard() {
 
   const handleGridUpdate = (data: { columns: string[], rows: Record<string, unknown>[] }) => {
     setGridData(data);
+    setSelectedRange(null);
     setHasModifications(true);
   };
 
@@ -339,8 +354,8 @@ function Dashboard() {
 
       {/* ══════════════════════ SIDEBAR ══════════════════════════════════ */}
       <aside
-        className={`flex flex-col flex-shrink-0 transition-all duration-500 ease-in-out overflow-hidden z-20 ${sidebarOpen ? 'w-64' : 'w-0'}`}
-        style={{ background: '#0d0d14', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+        className={`flex flex-col flex-shrink-0 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden z-20 ${sidebarOpen ? 'w-64 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-2 pointer-events-none'}`}
+        style={{ background: '#0d0d14', borderRight: '1px solid rgba(255,255,255,0.07)', willChange: 'width, transform, opacity' }}
       >
         {/* Logo row */}
         <div
@@ -361,7 +376,7 @@ function Dashboard() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg transition-all flex-shrink-0"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 cursor-pointer"
             {...sidebarToggleHover}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -440,7 +455,7 @@ function Dashboard() {
                     </span>
                     <button
                       onClick={e => handleDelete(conv.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex-shrink-0 cursor-pointer"
                       style={{ color: 'rgba(255,255,255,0.35)' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
@@ -472,7 +487,7 @@ function Dashboard() {
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 rounded-xl transition-all flex-shrink-0"
+                className="p-2 rounded-xl transition-all flex-shrink-0 cursor-pointer"
                 {...iconBtnHover}
               >
                 <ChevronRight className="w-4 h-4" />
@@ -493,6 +508,22 @@ function Dashboard() {
 
           {/* Right */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Ask MyCuery */}
+            <button
+              onClick={() => setChatOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer"
+              style={{
+                background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                border: '1px solid rgba(124,58,237,0.45)',
+                color: '#f8fafc',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 10px 30px rgba(124,58,237,0.45)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <Sparkles className="w-4 h-4" />
+              Ask MyCuery
+            </button>
+
             {/* Undo + Reset group */}
             <div
               className="flex items-center gap-0.5 rounded-xl p-1"
@@ -504,7 +535,7 @@ function Dashboard() {
               ].map(({ label, icon, onClick }) => (
                 <button
                   key={label}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-35 disabled:cursor-not-allowed disabled:grayscale"
                   style={{ color: 'rgba(255,255,255,0.55)' }}
                   onClick={onClick}
                   disabled={!sessionId}
@@ -518,7 +549,7 @@ function Dashboard() {
 
             {/* Download */}
             <button
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-45 disabled:grayscale"
               style={hasModifications ? {
                 background: 'rgba(124,58,237,0.18)',
                 border: '1px solid rgba(124,58,237,0.35)',
@@ -539,7 +570,7 @@ function Dashboard() {
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl transition-all"
+              className="p-2 rounded-xl transition-all cursor-pointer"
               title="Sign out"
               {...logoutHover}
             >
@@ -569,10 +600,6 @@ function Dashboard() {
               className="flex items-center gap-4 px-5 py-3.5 rounded-2xl mb-4"
               style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.14)' }}
             >
-              <Sparkles
-                className="w-4 h-4 flex-shrink-0 animate-pulse"
-                style={{ color: '#a78bfa' }}
-              />
               <div className="flex-1 min-w-0">
                 <div
                   className="h-1 rounded-full overflow-hidden"
@@ -580,7 +607,7 @@ function Dashboard() {
                 >
                   <div
                     className="h-full rounded-full animate-pulse"
-                    style={{ width: '48%', background: 'linear-gradient(90deg,#7c3aed,#a78bfa)' }}
+                    style={{ width: '28%', background: 'linear-gradient(90deg,#7c3aed,#a78bfa)' }}
                   />
                 </div>
               </div>
@@ -714,6 +741,11 @@ function Dashboard() {
                           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.32)' }}>
                             {filteredRows.length} rows · {gridData.columns.length} columns
                           </p>
+                          <p className="text-[11px] mt-0.5" style={{ color: selectedRange ? '#a78bfa' : 'rgba(255,255,255,0.28)' }}>
+                            {selectedRange
+                              ? `Selected range: ${selectedRange.rangeLabel} (${selectedRange.rowCount}x${selectedRange.columnCount})`
+                              : 'Tip: click and drag directly over the preview to select chart range'}
+                          </p>
                         </div>
                       </div>
 
@@ -744,6 +776,7 @@ function Dashboard() {
                     <div className="flex-1 overflow-hidden min-h-0">
                       <ExcelPreview
                         gridData={searchTerm ? { columns: gridData.columns, rows: filteredRows } : gridData}
+                        onSelectionChange={setSelectedRange}
                         className="h-full"
                       />
                     </div>
@@ -768,6 +801,7 @@ function Dashboard() {
               <ChatBox
                 isOpen={chatOpen}
                 onOpenChange={setChatOpen}
+                showLauncher={false}
                 appState={appState}
                 setAppState={setAppState}
                 onLoadingStep={setLoadingStep}
@@ -777,6 +811,7 @@ function Dashboard() {
                 messages={messages}
                 setMessages={setMessages}
                 onChartGenerated={setChartData}
+                selectedRange={selectedRange}
                 sessionId={sessionId}
               />
             </div>

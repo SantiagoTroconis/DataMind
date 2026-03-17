@@ -61,7 +61,7 @@ def _upload_test_xlsx(client, token):
     return resp.get_json()['session_id']
 
 
-def _post_transform_with_mock(client, token, session_id, prompt, mock_return):
+def _post_transform_with_mock(client, token, session_id, prompt, mock_return, extra_data=None):
     """
     POST to /excel/transform with LLMService mocked for the entire lifecycle
     including lazy stream consumption.
@@ -76,9 +76,16 @@ def _post_transform_with_mock(client, token, session_id, prompt, mock_return):
     )
     patcher.start()
     try:
+        payload = {
+            'session_id': str(session_id),
+            'prompt': prompt,
+        }
+        if extra_data:
+            payload.update(extra_data)
+
         resp = client.post(
             '/excel/transform',
-            data={'session_id': str(session_id), 'prompt': prompt},
+            data=payload,
             headers={'Authorization': f'Bearer {token}'},
         )
         # Force full stream consumption while mock is still active
@@ -137,3 +144,82 @@ def test_explanation_in_done_event(client):
     payload = done_frames[0]['data']
     assert 'explanation' in payload, f"'explanation' key missing from done payload: {payload}"
     assert payload['explanation'], f"'explanation' is empty in done payload: {payload}"
+
+
+def test_selected_range_restriction_for_non_chart_prompt(client):
+    """Selected range should only be accepted for VISUAL_UPDATE prompts."""
+    token = _make_authenticated_client(client)
+    session_id = _upload_test_xlsx(client, token)
+
+    mock_code_data = {
+        'code': "df['Value'] = df['Value'] + 1",
+        'explanation': 'Incremented values by 1.',
+        'intent': 'DATA_MUTATION'
+    }
+    selected_range = {
+        'rangeLabel': 'A2:B2',
+        'startCell': 'A2',
+        'endCell': 'B2',
+        'rowCount': 1,
+        'columnCount': 2,
+        'cellCount': 2,
+        'columns': ['Name', 'Value'],
+        'rows': [{'Name': 'Alice', 'Value': 100}],
+    }
+
+    resp, raw_data = _post_transform_with_mock(
+        client,
+        token,
+        session_id,
+        'increment values',
+        mock_code_data,
+        extra_data={'selected_range': json.dumps(selected_range)},
+    )
+
+    assert resp.status_code == 200
+    frames = _parse_sse_frames(raw_data)
+    error_frames = [f for f in frames if f['event'] == 'error']
+    assert error_frames, f"Expected error SSE frame, got: {frames}"
+    assert 'selección de celdas solo aplica para crear gráficas' in error_frames[0]['data'].get('error', '').lower()
+
+
+def test_visual_update_uses_selected_range_scope(client):
+    """VISUAL_UPDATE should build chart data using only the selected range rows/columns."""
+    token = _make_authenticated_client(client)
+    session_id = _upload_test_xlsx(client, token)
+
+    mock_code_data = {
+        'code': "fig = px.bar(df, x='Name', y='Value')",
+        'explanation': 'Generated chart from selected cells.',
+        'intent': 'VISUAL_UPDATE'
+    }
+    selected_range = {
+        'rangeLabel': 'A2:B2',
+        'startCell': 'A2',
+        'endCell': 'B2',
+        'rowCount': 1,
+        'columnCount': 2,
+        'cellCount': 2,
+        'columns': ['Name', 'Value'],
+        'rows': [{'Name': 'Alice', 'Value': 100}],
+    }
+
+    with patch('app.routes.excel.CodeExecutionService.execute_chart_generation', return_value='{"data": [], "layout": {}}') as chart_exec_mock:
+        resp, raw_data = _post_transform_with_mock(
+            client,
+            token,
+            session_id,
+            'create chart',
+            mock_code_data,
+            extra_data={'selected_range': json.dumps(selected_range)},
+        )
+
+    assert resp.status_code == 200
+    assert chart_exec_mock.called, "Chart execution should be called"
+    scoped_df = chart_exec_mock.call_args[0][0]
+    assert list(scoped_df.columns) == ['Name', 'Value']
+    assert len(scoped_df) == 1
+
+    frames = _parse_sse_frames(raw_data)
+    done_frames = [f for f in frames if f['event'] == 'done']
+    assert done_frames, f"Expected done event, got: {frames}"

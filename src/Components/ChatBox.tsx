@@ -3,12 +3,14 @@ import type { Dispatch, SetStateAction } from 'react';
 import { type Data } from 'plotly.js';
 import { Sparkles, X, Send, Bot, User, Code, BarChart, Type } from 'lucide-react';
 import type { Message } from '../Pages/Dashboard';
+import type { SelectedRangePayload } from './ExcelPreview';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '../utils/api';
 
 interface ChatBoxProps {
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
+    showLauncher?: boolean;
     appState?: string;
     setAppState?: (state: string) => void;
     onLoadingStep?: (step: string) => void;
@@ -19,6 +21,7 @@ interface ChatBoxProps {
     messages: Message[];
     setMessages: Dispatch<SetStateAction<Message[]>>;
     sessionId?: string | null;
+    selectedRange?: SelectedRangePayload | null;
 }
 
 const QUICK_ACTIONS = [
@@ -56,9 +59,9 @@ const generateCsvFile = (columns: string[], rows: Record<string, unknown>[]): Fi
 };
 
 export function ChatBox({
-    isOpen = false, onOpenChange, setAppState, onLoadingStep,
+    isOpen = false, onOpenChange, showLauncher = true, setAppState, onLoadingStep,
     file: _file, onUpdateFile, onUpdateGrid, onChartGenerated,
-    messages, setMessages, sessionId,
+    messages, setMessages, sessionId, selectedRange,
 }: ChatBoxProps) {
     const [prompt, setPrompt] = useState('');
     const [viewingCode, setViewingCode] = useState<string | null>(null);
@@ -96,16 +99,22 @@ export function ChatBox({
         setAppState?.('result');
 
         try {
+            const params = new URLSearchParams({
+                ...(sessionId ? { session_id: sessionId } : {}),
+                prompt: contentToSend,
+            });
+
+            if (selectedRange) {
+                params.append('selected_range', JSON.stringify(selectedRange));
+            }
+
             const response = await fetch(`${API_BASE_URL}/excel/transform`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: new URLSearchParams({
-                    ...(sessionId ? { session_id: sessionId } : {}),
-                    prompt: contentToSend,
-                }),
+                body: params,
             });
 
             if (!response.ok) {
@@ -202,11 +211,12 @@ export function ChatBox({
 
                 {/* ── Chat panel ─────────────────────────────────────── */}
                 <div
-                    className={`w-full rounded-2xl overflow-hidden pointer-events-auto origin-bottom mb-4 transition-all duration-500 ${isOpen
-                        ? 'h-[580px] opacity-100 scale-100 translate-y-0'
-                        : 'h-0 opacity-0 scale-95 translate-y-4 pointer-events-none'
+                    className={`w-full rounded-2xl overflow-hidden pointer-events-auto origin-bottom mb-4 transition-all duration-500 flex flex-col ${isOpen
+                        ? 'opacity-100 scale-100 translate-y-0'
+                        : 'opacity-0 scale-95 translate-y-4 pointer-events-none'
                     }`}
                     style={{
+                        height: isOpen ? 'min(580px, calc(100vh - 48px))' : '0px',
                         background: 'rgba(13,13,20,0.97)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         backdropFilter: 'blur(24px)',
@@ -247,8 +257,7 @@ export function ChatBox({
                     {/* Messages */}
                     <div
                         ref={scrollRef}
-                        className="p-5 overflow-y-auto space-y-4"
-                        style={{ height: 'calc(100% - 186px)' }}
+                        className="p-5 overflow-y-auto space-y-4 flex-1 min-h-0"
                     >
                         {messages.map(msg => (
                             <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -340,6 +349,11 @@ export function ChatBox({
                         className="px-4 pb-4 pt-3 flex-shrink-0"
                         style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
                     >
+                        <div className="mb-2 text-[11px]" style={{ color: selectedRange ? 'rgba(196,181,253,0.9)' : 'rgba(255,255,255,0.25)' }}>
+                            {selectedRange
+                                ? `Range for chart: ${selectedRange.rangeLabel} (${selectedRange.rowCount}x${selectedRange.columnCount})`
+                                : 'No range selected: charts will use the full dataset'}
+                        </div>
                         <div className="flex items-end gap-2">
                             <textarea
                                 ref={textareaRef}
@@ -375,20 +389,22 @@ export function ChatBox({
                 </div>
 
                 {/* ── FAB trigger ────────────────────────────────────── */}
-                <button
-                    onClick={() => onOpenChange?.(!isOpen)}
-                    className={`pointer-events-auto flex items-center gap-2.5 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-300 cursor-pointer fab-glow ${isOpen
-                        ? 'opacity-0 scale-90 pointer-events-none translate-y-2'
-                        : 'opacity-100 scale-100 translate-y-0'
-                    }`}
-                    style={{
-                        background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
-                        color: '#fff',
-                    }}
-                >
-                    <Sparkles className="w-4 h-4" />
-                    Ask MyCuery
-                </button>
+                {showLauncher && (
+                    <button
+                        onClick={() => onOpenChange?.(!isOpen)}
+                        className={`pointer-events-auto flex items-center gap-2.5 px-5 py-3 rounded-full font-semibold text-sm transition-all duration-300 cursor-pointer fab-glow ${isOpen
+                            ? 'opacity-0 scale-90 pointer-events-none translate-y-2'
+                            : 'opacity-100 scale-100 translate-y-0'
+                        }`}
+                        style={{
+                            background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                            color: '#fff',
+                        }}
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        Ask MyCuery
+                    </button>
+                )}
             </div>
 
             {/* ── Code modal ─────────────────────────────────────────── */}

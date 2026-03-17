@@ -28,6 +28,7 @@ export const apiFetch = async (
     if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        sessionStorage.removeItem('current_session_id');
         window.location.href = '/auth?expired=1';
         throw new Error('Session expired. Redirecting to login.');
     }

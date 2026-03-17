@@ -10,6 +10,9 @@ FORBIDDEN_PATTERNS = [
     'subprocess.',
     '__class__',
     '__subclasses__',
+    '__import__',
+    'eval(',
+    'exec(',
 ]
 
 
@@ -67,8 +70,36 @@ class CodeExecutionService:
         import plotly
         import json
 
+        for pattern in FORBIDDEN_PATTERNS:
+            if pattern in code:
+                raise ValueError(f"Forbidden pattern in generated code: {pattern!r}")
+
+        safe_builtins = {
+            'len': len,
+            'min': min,
+            'max': max,
+            'sum': sum,
+            'abs': abs,
+            'round': round,
+            'sorted': sorted,
+            'list': list,
+            'dict': dict,
+            'set': set,
+            'tuple': tuple,
+            'float': float,
+            'int': int,
+            'str': str,
+            'bool': bool,
+            'range': range,
+            'enumerate': enumerate,
+            'zip': zip,
+            'any': any,
+            'all': all,
+        }
+
         local_scope = {'df': df.copy()}
         global_scope = {
+            '__builtins__': safe_builtins,
             'pd': pd,
             'px': px,
             'go': go,

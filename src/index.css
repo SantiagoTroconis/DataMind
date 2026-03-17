@@ -139,17 +139,59 @@
 
   /* ── Dark theme for react-data-grid ────────────────────────────────── */
   /* Uses higher specificity (0,2,0) to override rdg-light (0,1,0) */
-  .dark-grid .rdg-light {
-    --rdg-color: #cbd5e1;
-    --rdg-border-color: rgba(255,255,255,0.07);
-    --rdg-background-color: transparent;
-    --rdg-header-background-color: rgba(255,255,255,0.04);
-    --rdg-row-hover-background-color: rgba(139,92,246,0.07);
-    --rdg-row-selected-background-color: rgba(139,92,246,0.15);
-    --rdg-row-selected-hover-background-color: rgba(139,92,246,0.22);
+  .dark-grid .rdg-light,
+  .dark-grid .rdg-dark {
+    --rdg-color: #d3dae6;
+    --rdg-border-color: rgba(255,255,255,0.08);
+    --rdg-background-color: rgba(10,10,16,0.55);
+    --rdg-header-background-color: rgba(18,18,26,0.85);
+    --rdg-row-hover-background-color: rgba(124,58,237,0.08);
+    --rdg-row-selected-background-color: rgba(124,58,237,0.18);
+    --rdg-row-selected-hover-background-color: rgba(124,58,237,0.24);
     --rdg-checkbox-color: #a78bfa;
     --rdg-selection-color: #7c3aed;
     --rdg-font-size: 13px;
+  }
+
+  .dark-grid .rdg,
+  .dark-grid .dark-grid-table {
+    background: rgba(10,10,16,0.72) !important;
+  }
+
+  .dark-grid .rdg-header-row {
+    background: rgba(18,18,26,0.95) !important;
+  }
+
+  .dark-grid .rdg-row {
+    background: rgba(10,10,16,0.72) !important;
+  }
+
+  .dark-grid .rdg-row:nth-child(even) {
+    background: rgba(12,12,18,0.8) !important;
+  }
+
+  .dark-grid .rdg-cell {
+    background: rgba(10,10,16,0.72) !important;
+    color: #dbe2ef !important;
+  }
+
+  .dark-grid .rdg-row:nth-child(even) .rdg-cell {
+    background: rgba(12,12,18,0.8) !important;
+  }
+
+  .dark-grid .rdg-header-row .rdg-cell {
+    background: rgba(18,18,26,0.95) !important;
+    color: #e6e9f2 !important;
+  }
+
+  .dark-grid .rdg-cell {
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .dark-grid .rdg-range-selected {
+    background: linear-gradient(180deg, rgba(124,58,237,0.22), rgba(124,58,237,0.16));
+    box-shadow: inset 0 0 0 1px rgba(167,139,250,0.75);
+    color: #f8fafc;
   }
 
   /* Scrollbar — dark theme */

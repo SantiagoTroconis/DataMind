@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
-    'mysql+pymysql://root:changeme@localhost:3306/DataMind_DB?charset=utf8mb4'
+    'mysql+pymysql://root:albert03$@localhost:3306/DataMind_DB?charset=utf8mb4'
 )
 
 # SQLite does not support pool_size / max_overflow — use minimal kwargs for it
